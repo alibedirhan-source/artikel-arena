@@ -350,7 +350,7 @@ h2{margin:6px 0 10px;font-size:26px}
 'use strict';
 /* ---------- DATA (from 500_haeufige_deutsche_Nomen.xlsx) ----------
    r = der, e = die, s = das ; format: "<r|e|s> Noun/Plural" (empty plural = none) */
-const VERSION='1.4.1', VDATE='10 Nov 2026';
+const VERSION='1.4.2', VDATE='10 Nov 2026';
 const ART={r:'der',e:'die',s:'das'};
 const RAW={
 'Familie und Menschen':['👨‍👩‍👧',`
@@ -1156,23 +1156,28 @@ function adopt(m){ // write merged progress into S (mutating, so running code ke
   S.stats=m.stats||{}; S.pst=m.pst||{}; S.best=Object.assign({blitz:0,surv:0},m.best); S.xp=m.xp||0; S.games=m.games||0;
   S.day=Object.assign({last:'',streak:0},m.day); S.rv=m.rv||0; S.nick=m.nick||''; S.nt=m.nt||0; if(m.lang) S.lang=m.lang;
 }
-let cloudState='idle', syncing=false, syncAgain=false, syncTimer=0;
+let cloudState='idle', syncing=null, syncAgain=false, syncTimer=0, upNt=0;
 function setCloudState(st){cloudState=st; paintCloud();}
 function schedSync(){ if(!cloudOn()) return; clearTimeout(syncTimer); syncTimer=setTimeout(sync,3500); }
-async function sync(){
-  if(!cloudOn()) return;
-  if(syncing){syncAgain=true; return;}
-  syncing=true; setCloudState('busy');
+function sync(){ // returns a promise; a call during a running sync joins it and asks for one more round
+  if(!cloudOn()) return Promise.resolve();
+  if(syncing){syncAgain=true; return syncing;}
+  syncing=runSync().finally(()=>{ syncing=null; if(syncAgain){syncAgain=false; schedSync();} });
+  return syncing;
+}
+async function runSync(){
+  setCloudState('busy');
   try{
     const h=await hashCode(S.cloud.code);
     const r=await rpc('aa_load',{h:h});
     if(!r||!r.data){ S.cloud=null; persist(); setCloudState('idle'); if($('home').classList.contains('active')) renderHome(); return; } // cloud copy was deleted elsewhere
     adopt(mergeStates(snap(),r.data));
-    await rpc('aa_save',{h:h,d:snap()});
+    const up=snap();
+    await rpc('aa_save',{h:h,d:up});
+    upNt=Math.max(upNt,up.nt||0);
     S.cloud.last=Date.now(); persist(); setCloudState('ok');
     if($('home').classList.contains('active')) renderHome();
   }catch(e){ setCloudState('err'); }
-  finally{ syncing=false; if(syncAgain){syncAgain=false; schedSync();} }
 }
 function paintCloud(){
   const el=$('cloudSt'); if(!el) return;
@@ -1204,7 +1209,8 @@ function renderCloud(){
     $('nSave').onclick=async()=>{ const r=cleanNick($('nIn').value); const m=$('nMsg');
       if(r.err){ m.textContent=r.err; m.className='cmsg err'; return; }
       S.nick=r.nick; S.nt=Date.now(); persist(); clearTimeout(syncTimer); m.textContent='Saving…'; m.className='cmsg';
-      await sync(); m.textContent=cloudState==='ok'?(r.nick?'Saved.':'Nickname removed.'):'Saved on this device. Will sync when online.'; m.className='cmsg '+(cloudState==='ok'?'ok':'err'); renderHome(); };
+      for(let i=0;i<3&&upNt<S.nt;i++) await sync();   // a sync that was already running may not have carried the new nickname
+      const done=upNt>=S.nt; m.textContent=done?(r.nick?'Saved.':'Nickname removed.'):'Saved on this device. Will sync when online.'; m.className='cmsg '+(done?'ok':'err'); renderHome(); };
     let shown=false; const code=fmtCode(S.cloud.code);
     $('cShow').onclick=()=>{shown=!shown; $('codeShow').textContent=shown?code:'•••••'; $('cShow').textContent=shown?'Hide code':'Show code';};
     $('cCopy').onclick=()=>copyText(code).then(ok=>cmsg(ok?'Copied.':'Could not copy — tap “Show code” and write it down.',ok?'ok':'err'));
@@ -1286,7 +1292,7 @@ en:[
 [`Why do some words have no plural?`,`Some nouns are only used in the singular, such as <i>Unterricht</i>, <i>Obst</i> or <i>Liebe</i>. They appear in the article games but not in Plural practice, which uses 472 of the 500 words.`],
 [`How reliable are the tips?`,`The tips are rules of thumb, not laws. A tip is only shown when it matches the correct article, but there are exceptions in German (for example <i>der Moment</i> or <i>das Auge</i>).`],
 [`Why “Strasse” and not “Straße”?`,`The word list uses Swiss spelling, with ss instead of ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Version history`,`<ul><li><b>1.4.1</b>: your nickname is shown on the home screen.</li><li><b>1.4.0</b>: optional nickname, saved with your secret code.</li><li><b>1.3.1</b>: FAQ entry “How can I save my progress?” explains the secret code.</li><li><b>1.3.0</b>: 5-character secret code to continue on other devices, with automatic sync.</li><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
+[`Version history`,`<ul><li><b>1.4.2</b>: fix: a nickname saved while another sync was running could fail to reach the cloud.</li><li><b>1.4.1</b>: your nickname is shown on the home screen.</li><li><b>1.4.0</b>: optional nickname, saved with your secret code.</li><li><b>1.3.1</b>: FAQ entry “How can I save my progress?” explains the secret code.</li><li><b>1.3.0</b>: 5-character secret code to continue on other devices, with automatic sync.</li><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
 ],
 de:[
 [`Was ist Artikel Arena?`,`Ein Spiel, mit dem du die deutschen Artikel <b>der, die, das</b> an den 500 häufigsten Nomen übst, inklusive Plural. Unter jedem Wort steht klein die englische Bedeutung. Nach jeder Antwort gibt es einen kurzen Tipp, wenn eine Regel passt.`],
@@ -1302,7 +1308,7 @@ de:[
 [`Warum haben manche Wörter keinen Plural?`,`Manche Nomen werden nur im Singular verwendet, zum Beispiel <i>Unterricht</i>, <i>Obst</i> oder <i>Liebe</i>. Sie kommen in den Artikel-Spielen vor, aber nicht im Plural-Training, das 472 der 500 Wörter nutzt.`],
 [`Wie zuverlässig sind die Tipps?`,`Die Tipps sind Faustregeln, keine Gesetze. Ein Tipp erscheint nur, wenn er zum richtigen Artikel passt, aber im Deutschen gibt es Ausnahmen (zum Beispiel <i>der Moment</i> oder <i>das Auge</i>).`],
 [`Warum „Strasse“ und nicht „Straße“?`,`Die Wortliste verwendet die Schweizer Schreibweise mit ss statt ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Versionsverlauf`,`<ul><li><b>1.4.1</b>: dein Spitzname wird auf dem Startbildschirm angezeigt.</li><li><b>1.4.0</b>: freiwilliger Spitzname, gespeichert mit deinem Geheimcode.</li><li><b>1.3.1</b>: FAQ-Eintrag „Wie kann ich meinen Fortschritt speichern?“ erklärt den Geheimcode.</li><li><b>1.3.0</b>: Geheimcode aus 5 Zeichen zum Weiterspielen auf anderen Geräten, mit automatischer Synchronisierung.</li><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
+[`Versionsverlauf`,`<ul><li><b>1.4.2</b>: Korrektur: Ein Spitzname, der während einer laufenden Synchronisierung gespeichert wurde, konnte die Cloud verfehlen.</li><li><b>1.4.1</b>: dein Spitzname wird auf dem Startbildschirm angezeigt.</li><li><b>1.4.0</b>: freiwilliger Spitzname, gespeichert mit deinem Geheimcode.</li><li><b>1.3.1</b>: FAQ-Eintrag „Wie kann ich meinen Fortschritt speichern?“ erklärt den Geheimcode.</li><li><b>1.3.0</b>: Geheimcode aus 5 Zeichen zum Weiterspielen auf anderen Geräten, mit automatischer Synchronisierung.</li><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
 ]
 };
 function renderFaq(){
