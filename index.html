@@ -1088,7 +1088,7 @@ function renderHome(){
 
 /* ---------- CLOUD: secret code + sync ---------- */
 // Fill these two values after creating the Supabase project (see supabase.sql). Empty = feature hidden.
-const CLOUD={url:'',key:''};
+const CLOUD={url:'https://takoneqyraffdtmwlcsn.supabase.co',key:'sb_publishable_TnIj4pa2eL7nSYQmJXV0qw_UOBjv0lQ'};
 const CODE_ABC='ABCDEFGHJKMNPQRSTUVWXYZ23456789', CODE_LEN=12;
 const cloudAvail=()=>!!(CLOUD.url&&CLOUD.key&&window.crypto&&crypto.subtle&&typeof fetch==='function');
 const cloudOn=()=>cloudAvail()&&S.cloud&&S.cloud.code;
