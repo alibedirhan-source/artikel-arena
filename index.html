@@ -348,7 +348,7 @@ h2{margin:6px 0 10px;font-size:26px}
 'use strict';
 /* ---------- DATA (from 500_haeufige_deutsche_Nomen.xlsx) ----------
    r = der, e = die, s = das ; format: "<r|e|s> Noun/Plural" (empty plural = none) */
-const VERSION='1.3.1', VDATE='10 Nov 2026';
+const VERSION='1.4.0', VDATE='10 Nov 2026';
 const ART={r:'der',e:'die',s:'das'};
 const RAW={
 'Familie und Menschen':['👨‍👩‍👧',`
@@ -934,7 +934,7 @@ WORDS.forEach(w=>{w.hint=makeHint(w);});
 
 /* ---------- STORAGE ---------- */
 const KEY='artikel-arena-v1';
-const defaults=()=>({lang:'en',stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{last:'',streak:0},games:0,rv:0,cloud:null});
+const defaults=()=>({lang:'en',stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{last:'',streak:0},games:0,rv:0,nick:'',nt:0,cloud:null});
 let S=defaults();
 try{const raw=localStorage.getItem(KEY); if(raw){const o=JSON.parse(raw); S=Object.assign(defaults(),o); S.best=Object.assign({blitz:0,surv:0},o.best); S.day=Object.assign({last:'',streak:0},o.day);}}catch(e){}
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
@@ -1122,7 +1122,7 @@ async function rpc(fn,args){
   } finally{clearTimeout(t);}
 }
 /* what goes to the cloud: progress only (no sound setting, no local link info) */
-const snap=()=>JSON.parse(JSON.stringify({lang:S.lang,stats:S.stats,pst:S.pst,best:S.best,xp:S.xp,day:S.day,games:S.games,rv:S.rv||0}));
+const snap=()=>JSON.parse(JSON.stringify({lang:S.lang,stats:S.stats,pst:S.pst,best:S.best,xp:S.xp,day:S.day,games:S.games,rv:S.rv||0,nick:S.nick||'',nt:S.nt||0}));
 const hasProgress=o=>!!(o&&((o.xp||0)>0||(o.games||0)>0||Object.keys(o.stats||{}).length||Object.keys(o.pst||{}).length));
 const stRank=e=>e.st==='m'?2:e.st==='a'?1:0;
 const dayNum=k=>{if(!k) return 0; const p=k.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).getTime()||0;};
@@ -1146,11 +1146,12 @@ function mergeStates(a,b){
   return {lang:a.lang||b.lang,stats:mergeStore(a.stats,b.stats),pst:mergeStore(a.pst,b.pst),
     best:{blitz:Math.max(bd.blitz||0,cd.blitz||0),surv:Math.max(bd.surv||0,cd.surv||0)},
     xp:Math.max(a.xp||0,b.xp||0),games:Math.max(a.games||0,b.games||0),rv:a.rv||0,
+    nick:((b.nt||0)>(a.nt||0)?b.nick:a.nick)||'',nt:Math.max(a.nt||0,b.nt||0),
     day:Object.assign({last:'',streak:0},dayWin||{})};
 }
 function adopt(m){ // write merged progress into S (mutating, so running code keeps working)
   S.stats=m.stats||{}; S.pst=m.pst||{}; S.best=Object.assign({blitz:0,surv:0},m.best); S.xp=m.xp||0; S.games=m.games||0;
-  S.day=Object.assign({last:'',streak:0},m.day); S.rv=m.rv||0; if(m.lang) S.lang=m.lang;
+  S.day=Object.assign({last:'',streak:0},m.day); S.rv=m.rv||0; S.nick=m.nick||''; S.nt=m.nt||0; if(m.lang) S.lang=m.lang;
 }
 let cloudState='idle', syncing=false, syncAgain=false, syncTimer=0;
 function setCloudState(st){cloudState=st; paintCloud();}
@@ -1173,7 +1174,14 @@ async function sync(){
 function paintCloud(){
   const el=$('cloudSt'); if(!el) return;
   if(!cloudOn()){ el.textContent=''; return; }
-  el.textContent=cloudState==='busy'?'☁️ Syncing…':cloudState==='err'?'☁️ Offline — will retry':(cloudState==='ok'||S.cloud.last)?'☁️ Synced':'';
+  const nk=S.nick?' · '+S.nick:''; el.textContent=cloudState==='busy'?'☁️ Syncing…':cloudState==='err'?'☁️ Offline — will retry':(cloudState==='ok'||S.cloud.last)?'☁️ Synced'+nk:'';
+}
+function cleanNick(x){
+  const n=String(x||'').replace(/\s+/g,' ').trim();
+  if(!n) return {nick:''};
+  if(n.length<2||n.length>16) return {err:'Use 2 to 16 characters.'};
+  if(!/^[\p{L}\p{N} _.\-]+$/u.test(n)) return {err:'Only letters, digits, spaces and _ . - are allowed.'};
+  return {nick:n};
 }
 const cmsg=(t,k)=>{const m=$('cMsg'); if(m){m.textContent=t||''; m.className='cmsg'+(k?' '+k:'');}};
 function renderCloud(){
@@ -1181,16 +1189,21 @@ function renderCloud(){
   if(!cloudAvail()){ b.innerHTML='<div class="cbox"><p>Syncing is not available in this version of the game.</p></div>'; return; }
   if(cloudOn()){
     const last=S.cloud.last?new Date(S.cloud.last).toLocaleString():'not yet';
-    b.innerHTML='<div class="cbox"><h3>This device is linked</h3><p>Your progress is saved to the cloud automatically. Use the same code on another device to continue there.</p>'+
-      '<div class="code" id="codeShow">•••• •••• ••••</div>'+
+    b.innerHTML='<div class="cbox"><h3>Nickname (optional)</h3><input class="cin" id="nIn" style="font-size:18px;letter-spacing:0;text-transform:none" maxlength="24" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="e.g. Ali or Lena_B" value="'+(S.nick||'').replace(/"/g,'&quot;')+'"><div class="cmsg" id="nMsg"></div><button class="cbtn alt" id="nSave">Save nickname</button><p style="font-size:13px;color:var(--muted)">Please do not use your full real name. The nickname is stored with your progress and is visible to the owner of the game.</p></div>'+
+      '<div class="cbox"><h3>This device is linked</h3><p>Your progress is saved to the cloud automatically. Use the same code on another device to continue there.</p>'+
+      '<div class="code" id="codeShow">•••••</div>'+
       '<button class="cbtn alt" id="cShow">Show code</button><button class="cbtn alt" id="cCopy">Copy code</button>'+
       '<p style="font-size:13px;color:var(--muted)">Last sync: '+last+'</p><div class="cmsg" id="cMsg"></div></div>'+
       '<button class="cbtn" id="cSync">Sync now</button>'+
       '<button class="cbtn alt" id="cOut">Unlink this device (keeps progress here)</button>'+
       '<button class="cbtn danger" id="cDel">Delete my cloud copy</button>'+
       '<div class="cbox warn"><p><b>Keep your code private.</b> Anyone who types it can play and overwrite your progress. If you lose it, we cannot recover it (the game does not know who you are).</p></div>';
+    $('nSave').onclick=async()=>{ const r=cleanNick($('nIn').value); const m=$('nMsg');
+      if(r.err){ m.textContent=r.err; m.className='cmsg err'; return; }
+      S.nick=r.nick; S.nt=Date.now(); persist(); clearTimeout(syncTimer); m.textContent='Saving…'; m.className='cmsg';
+      await sync(); m.textContent=cloudState==='ok'?(r.nick?'Saved.':'Nickname removed.'):'Saved on this device. Will sync when online.'; m.className='cmsg '+(cloudState==='ok'?'ok':'err'); renderHome(); };
     let shown=false; const code=fmtCode(S.cloud.code);
-    $('cShow').onclick=()=>{shown=!shown; $('codeShow').textContent=shown?code:'•••• •••• ••••'; $('cShow').textContent=shown?'Hide code':'Show code';};
+    $('cShow').onclick=()=>{shown=!shown; $('codeShow').textContent=shown?code:'•••••'; $('cShow').textContent=shown?'Hide code':'Show code';};
     $('cCopy').onclick=()=>copyText(code).then(ok=>cmsg(ok?'Copied.':'Could not copy — tap “Show code” and write it down.',ok?'ok':'err'));
     $('cSync').onclick=async()=>{cmsg('Syncing…'); await sync(); cmsg(cloudState==='ok'?'Synced.':'No connection. Will retry automatically.',cloudState==='ok'?'ok':'err');};
     let ao=0,ad=0;
@@ -1244,7 +1257,7 @@ async function loginWith(raw){
       else { S.rv=Date.now(); }            // keep this device: bump reset-version so it wins everywhere
       S.cloud={code:n.code,last:0}; persist(); await sync(); renderHome(); renderCloud();
     };
-    if(!hasProgress(snap())||!hasProgress(remote)){ await finish(hasProgress(remote)?'cloud':'device'); return; }
+    if(!hasProgress(snap())||!hasProgress(remote)){ await finish('merge'); return; } // only one side has progress: nothing to choose, just combine (keeps nickname too)
     $('cloudBody').innerHTML='<div class="cbox warn"><h3>Progress found on both sides</h3><p>This device and the cloud both have progress. What should we do?</p></div>'+
       '<button class="cbtn gold" id="mMerge">Combine both (recommended)</button>'+
       '<button class="cbtn alt" id="mCloud">Use the cloud progress only</button>'+
@@ -1258,7 +1271,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&cloudOn(
 const FAQ={
 en:[
 [`What is Artikel Arena?`,`A game for practising the German articles <b>der, die, das</b> with the 500 most common nouns, including their plurals. Every word shows its English meaning in small print, and after each answer you get a short tip when a rule applies.`],
-[`How can I save my progress? (Secret code)`,`<b>What it is:</b> your secret code is a short code of 5 letters and digits, for example <i>K7QF2</i>. It works like a key to your progress. There is no account, e-mail or password. Whoever has the code can open your progress, on any device.<br><br><b>How to save your progress:</b><ol><li>On the home screen tap <b>☁️ Secret code</b>.</li><li>Tap <b>Create my secret code</b>.</li><li><b>Write the code down</b> (notes app, password manager or paper) and tap “I saved it”.</li></ol>From then on your progress is saved to the cloud automatically. The home screen shows “☁️ Synced”.<br><br><b>How to continue on another device:</b> open the game there, tap <b>☁️ Secret code</b>, type your code under “I already have a code” and tap Continue. Your progress appears. If that device already has its own progress, you can <b>combine</b> both: every word keeps its best status and you keep the higher scores.<br><br><b>Good to know:</b><ul><li><b>Keep the code private.</b> Anyone who types it can play as you and change your progress.</li><li><b>If you lose the code, nobody can recover it</b>, because the game does not know who you are. On a device that is still linked you can show it again: ☁️ Secret code → Show code.</li><li>Only your progress is uploaded (word statuses, XP, best scores, daily streak). The code itself is stored on the server only in scrambled form (hash).</li><li>The code is short, so the server allows only a limited number of wrong guesses per minute. If you see “Too many attempts”, wait a minute.</li><li>On the same screen you can unlink a device or delete the cloud copy at any time.</li></ul>`],
+[`How can I save my progress? (Secret code)`,`<b>What it is:</b> your secret code is a short code of 5 letters and digits, for example <i>K7QF2</i>. It works like a key to your progress. There is no account, e-mail or password. Whoever has the code can open your progress, on any device.<br><br><b>How to save your progress:</b><ol><li>On the home screen tap <b>☁️ Secret code</b>.</li><li>Tap <b>Create my secret code</b>.</li><li><b>Write the code down</b> (notes app, password manager or paper) and tap “I saved it”.</li></ol>From then on your progress is saved to the cloud automatically. The home screen shows “☁️ Synced”.<br><br><b>Nickname (optional):</b> after creating a code you can set a nickname on the same screen (2 to 16 characters). It follows your code to every device.<br><br><b>How to continue on another device:</b> open the game there, tap <b>☁️ Secret code</b>, type your code under “I already have a code” and tap Continue. Your progress appears. If that device already has its own progress, you can <b>combine</b> both: every word keeps its best status and you keep the higher scores.<br><br><b>Good to know:</b><ul><li><b>Keep the code private.</b> Anyone who types it can play as you and change your progress.</li><li><b>If you lose the code, nobody can recover it</b>, because the game does not know who you are. On a device that is still linked you can show it again: ☁️ Secret code → Show code.</li><li>Only your progress (word statuses, XP, best scores, daily streak) and your optional nickname are uploaded. The code itself is stored on the server only in scrambled form (hash). The nickname is visible to the owner of the game, so please do not use your full real name.</li><li>The code is short, so the server allows only a limited number of wrong guesses per minute. If you see “Too many attempts”, wait a minute.</li><li>On the same screen you can unlink a device or delete the cloud copy at any time.</li></ul>`],
 [`What do the game modes do?`,`<ul><li>⚡ <b>Blitz</b>: 60 seconds. A wrong answer costs 5 seconds.</li><li>❤️ <b>Survival</b>: 3 lives. The time per word shrinks from 6 to 2.5 seconds.</li><li>🎯 <b>Topic training</b>: rounds of 10 words from one topic. Words you miss come back a few cards later.</li><li>🔢 <b>Plural practice</b>: choose the correct plural out of three options.</li><li>🔁 <b>Fix my mistakes</b>: practises the words you got wrong and have not mastered yet.</li></ul>`],
 [`How do points, combos and ranks work?`,`A correct answer gives 100 points plus up to 50 for speed. This is multiplied by your combo: ×2 from 5 correct answers in a row, up to ×5. Points count as XP and raise your rank (from Artikel-Neuling to Artikel-Legende). The daily streak counts the days on which you finished at least one game.`],
 [`When does a word count as “mastered”?`,`Every word goes through three stages:<ul><li><b>Learning</b>: fewer than 3 correct answers in a row.</li><li><b>Almost mastered 🌓</b>: 3 correct answers in a row.</li><li><b>Mastered ⭐</b>: answered correctly again on a different day. If the 3rd correct answer already falls on a different day than the 2nd, the word becomes mastered right away.</li></ul>Only the first attempt of a word counts. Repeats inside Topic training only help you remember. Articles and plurals have separate progress.`],
@@ -1270,11 +1283,11 @@ en:[
 [`Why do some words have no plural?`,`Some nouns are only used in the singular, such as <i>Unterricht</i>, <i>Obst</i> or <i>Liebe</i>. They appear in the article games but not in Plural practice, which uses 472 of the 500 words.`],
 [`How reliable are the tips?`,`The tips are rules of thumb, not laws. A tip is only shown when it matches the correct article, but there are exceptions in German (for example <i>der Moment</i> or <i>das Auge</i>).`],
 [`Why “Strasse” and not “Straße”?`,`The word list uses Swiss spelling, with ss instead of ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Version history`,`<ul><li><b>1.3.1</b>: FAQ entry “How can I save my progress?” explains the secret code.</li><li><b>1.3.0</b>: 5-character secret code to continue on other devices, with automatic sync.</li><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
+[`Version history`,`<ul><li><b>1.4.0</b>: optional nickname, saved with your secret code.</li><li><b>1.3.1</b>: FAQ entry “How can I save my progress?” explains the secret code.</li><li><b>1.3.0</b>: 5-character secret code to continue on other devices, with automatic sync.</li><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
 ],
 de:[
 [`Was ist Artikel Arena?`,`Ein Spiel, mit dem du die deutschen Artikel <b>der, die, das</b> an den 500 häufigsten Nomen übst, inklusive Plural. Unter jedem Wort steht klein die englische Bedeutung. Nach jeder Antwort gibt es einen kurzen Tipp, wenn eine Regel passt.`],
-[`Wie kann ich meinen Fortschritt speichern? (Geheimcode)`,`<b>Was es ist:</b> Dein Geheimcode ist ein kurzer Code aus 5 Buchstaben und Ziffern, zum Beispiel <i>K7QF2</i>. Er ist wie ein Schlüssel zu deinem Fortschritt. Es gibt kein Konto, keine E-Mail und kein Passwort. Wer den Code hat, kann deinen Fortschritt auf jedem Gerät öffnen.<br><br><b>So speicherst du deinen Fortschritt:</b><ol><li>Tippe auf dem Startbildschirm auf <b>☁️ Secret code</b>.</li><li>Tippe auf <b>Create my secret code</b>.</li><li><b>Schreibe den Code auf</b> (Notizen-App, Passwortmanager oder Papier) und tippe auf „I saved it“.</li></ol>Ab dann wird dein Fortschritt automatisch in der Cloud gespeichert. Der Startbildschirm zeigt „☁️ Synced“.<br><br><b>So spielst du auf einem anderen Gerät weiter:</b> Öffne dort das Spiel, tippe auf <b>☁️ Secret code</b>, gib deinen Code unter „I already have a code“ ein und tippe auf Continue. Dein Fortschritt erscheint. Hat das Gerät schon eigenen Fortschritt, kannst du beide <b>zusammenführen</b>: Jedes Wort behält seinen besten Status und du behältst die höheren Bestwerte.<br><br><b>Gut zu wissen:</b><ul><li><b>Halte den Code geheim.</b> Wer ihn eingibt, kann als du spielen und deinen Fortschritt verändern.</li><li><b>Verlierst du den Code, kann ihn niemand wiederherstellen</b>, weil das Spiel nicht weiss, wer du bist. Auf einem noch verbundenen Gerät kannst du ihn erneut anzeigen: ☁️ Secret code → Show code.</li><li>Hochgeladen wird nur dein Fortschritt (Wortstatus, XP, Bestwerte, Tagesserie). Der Code selbst wird auf dem Server nur in verschlüsselter Form (Hash) gespeichert.</li><li>Der Code ist kurz, deshalb erlaubt der Server nur eine begrenzte Zahl falscher Versuche pro Minute. Siehst du „Too many attempts“, warte eine Minute.</li><li>Auf demselben Bildschirm kannst du ein Gerät jederzeit trennen oder die Cloud-Kopie löschen.</li></ul>`],
+[`Wie kann ich meinen Fortschritt speichern? (Geheimcode)`,`<b>Was es ist:</b> Dein Geheimcode ist ein kurzer Code aus 5 Buchstaben und Ziffern, zum Beispiel <i>K7QF2</i>. Er ist wie ein Schlüssel zu deinem Fortschritt. Es gibt kein Konto, keine E-Mail und kein Passwort. Wer den Code hat, kann deinen Fortschritt auf jedem Gerät öffnen.<br><br><b>So speicherst du deinen Fortschritt:</b><ol><li>Tippe auf dem Startbildschirm auf <b>☁️ Secret code</b>.</li><li>Tippe auf <b>Create my secret code</b>.</li><li><b>Schreibe den Code auf</b> (Notizen-App, Passwortmanager oder Papier) und tippe auf „I saved it“.</li></ol>Ab dann wird dein Fortschritt automatisch in der Cloud gespeichert. Der Startbildschirm zeigt „☁️ Synced“.<br><br><b>Spitzname (freiwillig):</b> Nach dem Erstellen eines Codes kannst du auf demselben Bildschirm einen Spitznamen festlegen (2 bis 16 Zeichen). Er folgt deinem Code auf jedes Gerät.<br><br><b>So spielst du auf einem anderen Gerät weiter:</b> Öffne dort das Spiel, tippe auf <b>☁️ Secret code</b>, gib deinen Code unter „I already have a code“ ein und tippe auf Continue. Dein Fortschritt erscheint. Hat das Gerät schon eigenen Fortschritt, kannst du beide <b>zusammenführen</b>: Jedes Wort behält seinen besten Status und du behältst die höheren Bestwerte.<br><br><b>Gut zu wissen:</b><ul><li><b>Halte den Code geheim.</b> Wer ihn eingibt, kann als du spielen und deinen Fortschritt verändern.</li><li><b>Verlierst du den Code, kann ihn niemand wiederherstellen</b>, weil das Spiel nicht weiss, wer du bist. Auf einem noch verbundenen Gerät kannst du ihn erneut anzeigen: ☁️ Secret code → Show code.</li><li>Hochgeladen werden nur dein Fortschritt (Wortstatus, XP, Bestwerte, Tagesserie) und dein freiwilliger Spitzname. Der Code selbst wird auf dem Server nur in verschlüsselter Form (Hash) gespeichert. Der Spitzname ist für den Besitzer des Spiels sichtbar, bitte verwende deshalb nicht deinen vollen echten Namen.</li><li>Der Code ist kurz, deshalb erlaubt der Server nur eine begrenzte Zahl falscher Versuche pro Minute. Siehst du „Too many attempts“, warte eine Minute.</li><li>Auf demselben Bildschirm kannst du ein Gerät jederzeit trennen oder die Cloud-Kopie löschen.</li></ul>`],
 [`Was machen die Spielmodi?`,`<ul><li>⚡ <b>Blitz</b>: 60 Sekunden. Eine falsche Antwort kostet 5 Sekunden.</li><li>❤️ <b>Survival</b>: 3 Leben. Die Zeit pro Wort sinkt von 6 auf 2,5 Sekunden.</li><li>🎯 <b>Themen-Training</b>: Runden mit 10 Wörtern aus einem Thema. Falsche Wörter kommen nach ein paar Karten wieder.</li><li>🔢 <b>Plural-Training</b>: Wähle den richtigen Plural aus drei Möglichkeiten.</li><li>🔁 <b>Fehler korrigieren</b>: übt die Wörter, die du falsch hattest und noch nicht gemeistert hast.</li></ul>`],
 [`Wie funktionieren Punkte, Combos und Ränge?`,`Eine richtige Antwort gibt 100 Punkte plus bis zu 50 für Tempo. Das wird mit deiner Combo multipliziert: ×2 ab 5 richtigen Antworten in Folge, bis zu ×5. Punkte zählen als XP und erhöhen deinen Rang (von Artikel-Neuling bis Artikel-Legende). Die Tagesserie zählt die Tage, an denen du mindestens ein Spiel beendet hast.`],
 [`Wann gilt ein Wort als „gemeistert“?`,`Jedes Wort durchläuft drei Stufen:<ul><li><b>Lernen</b>: weniger als 3 richtige Antworten in Folge.</li><li><b>Fast gemeistert 🌓</b>: 3 richtige Antworten in Folge.</li><li><b>Gemeistert ⭐</b>: an einem anderen Tag nochmals richtig beantwortet. Fällt die 3. richtige Antwort schon auf einen anderen Tag als die 2., ist das Wort sofort gemeistert.</li></ul>Nur der erste Versuch eines Wortes zählt. Wiederholungen im Themen-Training helfen nur beim Merken. Artikel und Plural haben getrennte Fortschritte.`],
@@ -1286,7 +1299,7 @@ de:[
 [`Warum haben manche Wörter keinen Plural?`,`Manche Nomen werden nur im Singular verwendet, zum Beispiel <i>Unterricht</i>, <i>Obst</i> oder <i>Liebe</i>. Sie kommen in den Artikel-Spielen vor, aber nicht im Plural-Training, das 472 der 500 Wörter nutzt.`],
 [`Wie zuverlässig sind die Tipps?`,`Die Tipps sind Faustregeln, keine Gesetze. Ein Tipp erscheint nur, wenn er zum richtigen Artikel passt, aber im Deutschen gibt es Ausnahmen (zum Beispiel <i>der Moment</i> oder <i>das Auge</i>).`],
 [`Warum „Strasse“ und nicht „Straße“?`,`Die Wortliste verwendet die Schweizer Schreibweise mit ss statt ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Versionsverlauf`,`<ul><li><b>1.3.1</b>: FAQ-Eintrag „Wie kann ich meinen Fortschritt speichern?“ erklärt den Geheimcode.</li><li><b>1.3.0</b>: Geheimcode aus 5 Zeichen zum Weiterspielen auf anderen Geräten, mit automatischer Synchronisierung.</li><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
+[`Versionsverlauf`,`<ul><li><b>1.4.0</b>: freiwilliger Spitzname, gespeichert mit deinem Geheimcode.</li><li><b>1.3.1</b>: FAQ-Eintrag „Wie kann ich meinen Fortschritt speichern?“ erklärt den Geheimcode.</li><li><b>1.3.0</b>: Geheimcode aus 5 Zeichen zum Weiterspielen auf anderen Geräten, mit automatischer Synchronisierung.</li><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
 ]
 };
 function renderFaq(){
@@ -1515,7 +1528,7 @@ $('arts').querySelectorAll('.art').forEach(b=>b.onclick=()=>answer(b.dataset.a))
 let rt=0;
 $('resetBtn').onclick=()=>{
   const b=$('resetBtn');
-  if(b.dataset.arm){const cl=S.cloud; S=defaults(); S.cloud=cl; S.rv=Date.now(); save(); if(cloudOn()){clearTimeout(syncTimer); sync();} b.dataset.arm=''; b.textContent='Reset progress'; clearTimeout(rt); renderHome(); return;}
+  if(b.dataset.arm){const cl=S.cloud, nk=S.nick, nt0=S.nt; S=defaults(); S.cloud=cl; S.nick=nk; S.nt=nt0; S.rv=Date.now(); save(); if(cloudOn()){clearTimeout(syncTimer); sync();} b.dataset.arm=''; b.textContent='Reset progress'; clearTimeout(rt); renderHome(); return;}
   b.dataset.arm='1'; b.textContent='Tap again to erase everything';
   rt=setTimeout(()=>{b.dataset.arm=''; b.textContent='Reset progress';},4000);
 };
