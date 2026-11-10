@@ -42,7 +42,9 @@ h1 span{color:var(--gold)}
 .rank .row{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
 .rank small{color:var(--muted);font-weight:500}
 .meter{height:10px;background:#12163a;border-radius:99px;overflow:hidden}
-.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--der),var(--die),var(--das));border-radius:99px;transition:width .5s}
+.meter{position:relative}
+.meter i{position:absolute;left:0;top:0;display:block;height:100%;background:linear-gradient(90deg,var(--der),var(--die),var(--das));border-radius:99px;transition:width .5s}
+.meter i.al{background:rgba(251,191,36,.5)}
 .modes{display:flex;flex-direction:column;gap:10px}
 .mode{display:flex;align-items:center;gap:14px;width:100%;padding:13px 16px;border-radius:20px;border:0;text-align:left;cursor:pointer;color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.3);transition:transform .08s,box-shadow .08s}
 .mode:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
@@ -106,9 +108,12 @@ h2{margin:6px 0 10px;font-size:26px}
 .fb .verdict.no{color:#e2e8f0}
 .fb .pl{color:var(--muted)}
 .fb .pl b{color:var(--text);font-weight:600}
+.fb .prog{margin-top:3px;font-size:13.5px;color:#c4c9ee}
+.fb .prog.up{color:var(--gold);font-weight:600}
 .fb .hint{margin-top:5px;background:rgba(251,191,36,.12);border:1.5px solid rgba(251,191,36,.45);border-radius:14px;padding:6px 10px;color:#fde9a8;font-size:14.5px}
 .float{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-weight:700;font-size:28px;color:var(--gold);pointer-events:none;animation:floatup 1s ease-out forwards;text-shadow:0 2px 0 rgba(0,0,0,.35);white-space:nowrap;z-index:5}
 .float.cheer{font-size:40px;top:6%;color:#fff}
+.float.star{font-size:30px;top:24%;color:#fde68a}
 .float.neg{color:#fca5a5}
 .arts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
 .art{height:92px;border:0;border-radius:22px;color:#fff;font-size:34px;font-weight:700;cursor:pointer;position:relative;box-shadow:0 6px 0 rgba(0,0,0,.32);transition:transform .07s,box-shadow .07s,opacity .2s}
@@ -229,6 +234,11 @@ h2{margin:6px 0 10px;font-size:26px}
         <li>-um (das Museum), -ment (das Instrument)</li>
         <li>Young beings: das Kind, das Baby</li>
         <li>Most “ge-” collectives and infinitives used as nouns (das Essen)</li></ul></div>
+      <div class="grp tip"><h3>⭐ How mastery works</h3><ul>
+        <li>3 correct answers in a row → <b>almost mastered</b> 🌓</li>
+        <li>Correct again on a <b>different day</b> → <b>mastered</b> ⭐</li>
+        <li>A wrong answer resets words you are still learning</li>
+        <li>Almost-mastered words never go back to the start. A mastered word that you miss drops to almost mastered and needs just one correct answer.</li></ul></div>
       <div class="grp tip"><h3>🧩 Compound nouns</h3>The <b>last part</b> decides: das Zimmer → <i>das</i> Wohnzimmer, der Tisch → <i>der</i> Schreibtisch.
         <div class="note">These are tendencies, not laws — there are exceptions (der Moment, das Auge…). The tips in the game only appear when they match.</div></div>
     </div>
@@ -881,9 +891,38 @@ const defaults=()=>({stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{
 let S=defaults();
 try{const raw=localStorage.getItem(KEY); if(raw){const o=JSON.parse(raw); S=Object.assign(defaults(),o); S.best=Object.assign({blitz:0,surv:0},o.best); S.day=Object.assign({last:'',streak:0},o.day);}}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
-const boxOf=(w,st)=>{const t=(st||S.stats)[w.id];return (t&&t.b)||0;};
+['stats','pst'].forEach(k=>{S[k]=S[k]||{}; for(const id in S[k]){const e=S[k][id]; if(e.st) continue; const b=e.b||0; e.st=b>=3?'a':'l'; e.s=Math.min(b,3); e.ld=''; e.rm=0; delete e.b;}});
+const todayKey=()=>{if(window.__today) return window.__today; const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();};
+const statusOf=(w,st)=>{const e=(st||S.stats)[w.id]; return e?e.st:'l';};
+const boxOf=(w,st)=>{const e=(st||S.stats)[w.id]; if(!e) return 0; return e.st==='m'?4:e.st==='a'?3:Math.min(2,e.s||0);};
+function applyResult(store,w,ok){
+  const e=store[w.id]||(store[w.id]={s:0,st:'l',ld:'',rm:0,r:0,w:0});
+  const prev=e.st, td=todayKey();
+  if(ok){
+    e.r++;
+    if(e.st==='l'){ e.s++; if(e.s>=3) e.st=(e.ld&&e.ld!==td)?'m':'a'; }
+    else if(e.st==='a'){ if(e.rm||(e.ld&&e.ld!==td)) e.st='m'; }
+    if(e.st==='m') e.rm=0;
+    e.ld=td;
+  } else {
+    e.w++;
+    if(e.st==='l') e.s=0;
+    else if(e.st==='m'){ e.st='a'; e.rm=1; }
+  }
+  return {prev:prev,now:e.st,s:e.s};
+}
+function progText(r,ok){
+  if(ok){
+    if(r.now==='m') return r.prev!=='m'?['⭐ Mastered!',1]:['⭐ Mastered',0];
+    if(r.now==='a') return [(r.prev==='l'?'🌓 Almost mastered! ':'🌓 Almost mastered — ')+'get it right once more on another day to master it',r.prev==='l'?1:0];
+    return ['Streak '+r.s+' / 3',0];
+  }
+  if(r.prev==='m') return ['⬇ Back to almost mastered — one correct answer makes it mastered again',0];
+  if(r.prev==='a') return ['🌓 Still almost mastered — it will not reset',0];
+  return ['Streak reset to 0 / 3',0];
+}
 const WGT=[6,4,3,2,1];
-const mistakesPool=()=>WORDS.filter(w=>S.stats[w.id]&&S.stats[w.id].w>0&&S.stats[w.id].b<3);
+const mistakesPool=()=>WORDS.filter(w=>S.stats[w.id]&&S.stats[w.id].w>0&&S.stats[w.id].st!=='m');
 
 /* ---------- HELPERS ---------- */
 const $=id=>document.getElementById(id);
@@ -985,13 +1024,13 @@ function renderHome(){
   $('rankName').textContent=ri.cur[2]+' '+ri.cur[1];
   $('rankXp').textContent=S.xp+' XP'+(ri.nxt?' · next at '+ri.nxt[0]:'');
   $('rankBar').style.width=ri.pct+'%';
-  const m=WORDS.filter(w=>boxOf(w)>=3).length;
-  $('mastered').textContent='Mastered '+m+' / '+WORDS.length+' words';
+  const m=WORDS.filter(w=>statusOf(w)==='m').length, am=WORDS.filter(w=>statusOf(w)==='a').length;
+  $('mastered').textContent='⭐ Mastered '+m+' / '+WORDS.length+' · 🌓 Almost '+am;
   $('bBlitz').textContent='Best '+S.best.blitz; $('bSurv').textContent='Best '+S.best.surv;
   const n=mistakesPool().length;
   $('fixSub').textContent=n?n+' word'+(n>1?'s':'')+' to repeat':'Nothing to fix yet — nice!';
   $('mFix').disabled=!n;
-  const pp=WORDS.filter(w=>w.plural);$('pSub').textContent='Pick the right plural · '+pp.filter(w=>boxOf(w,S.pst)>=3).length+' / '+pp.length+' mastered';
+  const pp=WORDS.filter(w=>w.plural);$('pSub').textContent='Pick the right plural · '+pp.filter(w=>statusOf(w,S.pst)==='m').length+' / '+pp.length+' mastered';
   const d=S.day.streak||0; $('dayStreak').textContent='🔥 '+d+' day'+(d===1?'':'s');
   setMascot('heroMascot','happy'); syncSound();
 }
@@ -1001,9 +1040,9 @@ function renderThemes(){
   $('themesTitle').textContent=isP?'Plural practice — choose a topic':'Choose a topic';
   const box=$('themeList'); box.innerHTML='';
   const mk=(emoji,name,pool)=>{
-    const done=pool.filter(w=>boxOf(w,st)>=3).length;
+    const done=pool.filter(w=>statusOf(w,st)==='m').length, al=pool.filter(w=>statusOf(w,st)==='a').length;
     const b=document.createElement('button'); b.className='th';
-    b.innerHTML='<span class="e">'+emoji+'</span><span class="tt"><span>'+name+'</span><span class="meter"><i style="width:'+(done/pool.length*100)+'%"></i></span><small>'+done+' / '+pool.length+' mastered</small></span>';
+    b.innerHTML='<span class="e">'+emoji+'</span><span class="tt"><span>'+name+'</span><span class="meter"><i class="al" style="width:'+((done+al)/pool.length*100)+'%"></i><i style="width:'+(done/pool.length*100)+'%"></i></span><small>⭐ '+done+' mastered · 🌓 '+al+' almost · '+pool.length+' words</small></span>';
     b.onclick=()=>start('train',{pool,label:name,plural:isP});
     box.appendChild(b);
   };
@@ -1085,10 +1124,10 @@ function answer(choice){
   const w=g.cur, isP=g.kind==='plural', ok=choice===(isP?w.plural:w.art), ms=now()-g.t0;
   g.phase='fb';
     const counts=!g.curRetry;
+  let res=null;
   if(counts){
     g.firstN++; if(ok) g.firstOk++;
-    const store=isP?S.pst:S.stats, st=store[w.id]||(store[w.id]={b:0,r:0,w:0});
-    if(ok){st.r++; st.b=Math.min(4,st.b+1);} else {st.w++; st.b=0;}
+    res=applyResult(isP?S.pst:S.stats,w,ok);
   }
   let verdict;
   if(ok){
@@ -1100,6 +1139,7 @@ function answer(choice){
     floatTxt('+'+gain);
     $('card').classList.add('ok'); setMascot('mascot','happy');
     verdict='<div class="verdict ok">✓ Richtig!</div>';
+    if(res&&res.now==='m'&&res.prev!=='m') floatTxt('⭐ Mastered!','star');
     const [x,y]=cardCenter();
     if(CHEERS[g.streak]||(g.streak>25&&g.streak%5===0)){floatTxt(CHEERS[g.streak]||'Unaufhaltsam!','cheer'); burst(x,y,70); sfx.combo(); buzz(30);}
     else {sfx.right(Math.min(g.streak,8)); burst(x,y,8);}
@@ -1126,11 +1166,12 @@ function answer(choice){
     $('arts').querySelectorAll('.art').forEach(b=>{ if(b.dataset.a===w.art) b.classList.add('good'); else b.classList.add('dim'); });
     pl=w.plural?'Plural: <b>die '+w.plural+'</b>':'<b>No plural</b> (used in the singular)';
   }
-  $('fb').innerHTML=verdict+'<div class="pl">'+pl+'</div>'+(!isP&&w.hint?'<div class="hint">💡 '+w.hint+'</div>':'');
+  let prog=''; if(res){const pt=progText(res,ok); prog='<div class="prog'+(pt[1]?' up':'')+'">'+pt[0]+'</div>';}
+  $('fb').innerHTML=verdict+'<div class="pl">'+pl+'</div>'+prog+(!isP&&w.hint?'<div class="hint">💡 '+w.hint+'</div>':'');
   save();
   g.final=(g.mode==='surv'&&g.lives<=0)||(g.mode==='train'&&g.queue.length===0);
   if(ok){
-    g.next=setTimeout(proceed,g.mode==='blitz'?480:(w.hint?1300:900));
+    g.next=setTimeout(proceed,g.mode==='blitz'?480:(w.hint?1500:1200));
   } else {
     g.phase='wait'; $('game').classList.add('waiting');
     $('nextBtn').textContent=g.final?'See results ▶':'Weiter ▶';
@@ -1222,7 +1263,7 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 renderHome();
-window.__artikel={WORDS,THEMES,get G(){return G;},start,answer,proceed,S:()=>S}; // handy for debugging
+window.__artikel={WORDS,THEMES,get G(){return G;},start,answer,proceed,applyResult,statusOf,S:()=>S}; // handy for debugging
 })();
 </script>
 <script>
