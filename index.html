@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Artikel Arena – der, die, das</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#0e1124">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Artikel Arena">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1124;--card:#1d2248;--card2:#252b5c;--line:#343b7a;--text:#f4f5ff;--muted:#a3a9d6;
+  --der:#3b82f6;--die:#ec4899;--das:#10b981;--gold:#fbbf24;
+  --font:'Fredoka',ui-rounded,'SF Pro Rounded',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(900px 600px at 50% -10%,#2d3374 0%,var(--bg) 62%) fixed;color:var(--text);font-family:var(--font);overflow:hidden}
+button{font-family:inherit;color:inherit;touch-action:manipulation}
+#app{height:100vh;height:100dvh;max-width:560px;margin:0 auto;position:relative}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);overflow-y:auto;overscroll-behavior:contain}
+.screen.active{display:flex}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pill{background:var(--card);border:2px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600;font-size:15px}
+.icon{background:var(--card);border:2px solid var(--line);border-radius:14px;width:44px;height:44px;font-size:18px;cursor:pointer}
+.icon.sm{width:36px;height:36px;font-size:15px;border-radius:12px}
+.icon:active{transform:scale(.94)}
+.hero{text-align:center;margin:4px 0 12px}
+.hero svg{width:92px;height:92px;animation:bob 2.6s ease-in-out infinite}
+h1{margin:2px 0 4px;font-size:40px;letter-spacing:.5px;font-weight:700}
+h1 span{color:var(--gold)}
+.sub{margin:0;color:var(--muted);font-size:16px}
+.sub b.der{color:var(--der)}.sub b.die{color:var(--die)}.sub b.das{color:var(--das)}
+.panel{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:12px 14px;margin-bottom:12px}
+.rank{display:flex;flex-direction:column;gap:6px}
+.rank .row{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
+.rank small{color:var(--muted);font-weight:500}
+.meter{height:10px;background:#12163a;border-radius:99px;overflow:hidden}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--der),var(--die),var(--das));border-radius:99px;transition:width .5s}
+.modes{display:flex;flex-direction:column;gap:10px}
+.mode{display:flex;align-items:center;gap:14px;width:100%;padding:13px 16px;border-radius:20px;border:0;text-align:left;cursor:pointer;color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.3);transition:transform .08s,box-shadow .08s}
+.mode:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.mode .mi{font-size:30px;width:38px;text-align:center}
+.mode .mt{flex:1;display:flex;flex-direction:column;line-height:1.15}
+.mode .mt b{font-size:21px;font-weight:700}
+.mode .mt small{font-size:13.5px;opacity:.9;font-weight:500}
+.mode em{font-style:normal;font-size:13px;font-weight:600;background:rgba(0,0,0,.22);padding:4px 10px;border-radius:99px;white-space:nowrap}
+.mode.blitz{background:linear-gradient(135deg,#f59e0b,#ef4444)}
+.mode.surv{background:linear-gradient(135deg,#ec4899,#8b5cf6)}
+.mode.theme{background:linear-gradient(135deg,#3b82f6,#06b6d4)}
+.mode.plur{background:linear-gradient(135deg,#8b5cf6,#6366f1)}
+.mode.fix{background:linear-gradient(135deg,#10b981,#14b8a6)}
+.mode[disabled]{filter:grayscale(.8) brightness(.7);cursor:default}
+.links{display:flex;justify-content:space-between;margin-top:14px;gap:8px}
+.link{background:none;border:0;color:var(--muted);font-size:14.5px;font-weight:500;cursor:pointer;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
+.back{align-self:flex-start;margin-bottom:6px}
+h2{margin:6px 0 10px;font-size:26px}
+.themes{display:flex;flex-direction:column;gap:9px}
+.th{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--line);border-radius:18px;padding:11px 14px;cursor:pointer;width:100%;text-align:left}
+.th:active{transform:scale(.98)}
+.th .e{font-size:26px}
+.th .tt{flex:1;display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:17px}
+.th small{color:var(--muted);font-size:13px;font-weight:500}
+.cheat{display:flex;flex-direction:column;gap:10px;font-size:15.5px;line-height:1.4}
+.cheat .grp{border-radius:16px;padding:10px 14px;border:2px solid}
+.cheat .grp h3{margin:0 0 4px;font-size:20px}
+.cheat .grp.der{border-color:var(--der);background:rgba(59,130,246,.12)}.cheat .grp.der h3{color:var(--der)}
+.cheat .grp.die{border-color:var(--die);background:rgba(236,72,153,.12)}.cheat .grp.die h3{color:var(--die)}
+.cheat .grp.das{border-color:var(--das);background:rgba(16,185,129,.12)}.cheat .grp.das h3{color:var(--das)}
+.cheat .grp.tip{border-color:var(--gold);background:rgba(251,191,36,.1)}
+.cheat ul{margin:0;padding-left:20px}
+.cheat .note{color:var(--muted);font-size:13.5px}
+
+/* game */
+.hud{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.score{text-align:center;line-height:1}
+.score span{font-size:38px;font-weight:700;display:inline-block}
+.score span.pop{animation:pop .3s}
+.score small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.hudr{min-width:68px;text-align:right;font-size:20px;font-weight:700;letter-spacing:1px}
+.barwrap{height:12px;background:#12163a;border-radius:99px;overflow:hidden;margin:10px 0 6px;border:2px solid var(--line)}
+#bar{height:100%;width:100%;background:linear-gradient(90deg,var(--der),var(--das));border-radius:99px;transition:width .1s linear}
+#bar.warn{background:linear-gradient(90deg,#f59e0b,#ef4444);animation:blink .5s infinite alternate}
+.comborow{display:flex;justify-content:space-between;align-items:center;min-height:36px}
+.combo{font-weight:700;font-size:17px;color:var(--gold);visibility:hidden}
+.combo.on{visibility:visible;animation:pop .25s}
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;min-height:0}
+#mascot svg{width:64px;height:64px;display:block}
+.wcard{width:100%;background:var(--card);border:3px solid var(--line);border-radius:28px;padding:16px 14px 22px;text-align:center;position:relative}
+.wcard.enter{animation:slidein .22s ease-out}
+.wcard.ok{border-color:var(--gold);box-shadow:0 0 0 7px rgba(251,191,36,.18)}
+.wcard.bad{border-color:#cbd5e1;animation:shake .4s}
+.chip{display:inline-block;font-size:12.5px;color:var(--muted);background:#12163a;border-radius:99px;padding:3px 12px;font-weight:500}
+.cart{font-size:34px;font-weight:700;min-height:48px;line-height:48px;color:#59608f}
+.cart.der{color:var(--der)}.cart.die{color:var(--die)}.cart.das{color:var(--das)}
+.cnoun{font-size:56px;font-weight:700;line-height:1.05;word-break:break-word;hyphens:auto}
+.fb{width:100%;min-height:92px;text-align:center;font-size:16px;line-height:1.35}
+.fb .verdict{font-weight:700;font-size:19px;margin-bottom:2px}
+.fb .verdict.ok{color:var(--gold)}
+.fb .verdict.no{color:#e2e8f0}
+.fb .pl{color:var(--muted)}
+.fb .pl b{color:var(--text);font-weight:600}
+.fb .hint{margin-top:5px;background:rgba(251,191,36,.12);border:1.5px solid rgba(251,191,36,.45);border-radius:14px;padding:6px 10px;color:#fde9a8;font-size:14.5px}
+.float{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-weight:700;font-size:28px;color:var(--gold);pointer-events:none;animation:floatup 1s ease-out forwards;text-shadow:0 2px 0 rgba(0,0,0,.35);white-space:nowrap;z-index:5}
+.float.cheer{font-size:40px;top:6%;color:#fff}
+.float.neg{color:#fca5a5}
+.arts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.art{height:92px;border:0;border-radius:22px;color:#fff;font-size:34px;font-weight:700;cursor:pointer;position:relative;box-shadow:0 6px 0 rgba(0,0,0,.32);transition:transform .07s,box-shadow .07s,opacity .2s}
+.art:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.32)}
+.art.der{background:var(--der)}.art.die{background:var(--die)}.art.das{background:var(--das)}
+.art kbd{position:absolute;right:9px;top:6px;font:600 12px var(--font);opacity:.65}
+@media (hover:none){.art kbd{display:none}}
+.arts.locked .art{pointer-events:none}
+.arts.locked .art.dim{opacity:.35}
+.arts.locked .art.good{animation:pop .3s;box-shadow:0 0 0 5px rgba(251,191,36,.9),0 6px 0 rgba(0,0,0,.32)}
+.next{display:none;height:92px;width:100%;margin-top:6px;border:0;border-radius:22px;background:var(--gold);color:#3b2a00;font-size:26px;font-weight:700;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.32)}
+.next:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.32)}
+#game.waiting .arts{display:none}
+#game.waiting .next{display:block}
+
+/* result */
+.res{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.res svg{width:84px;height:84px}
+.res h2{margin:0;font-size:30px}
+.big{font-size:60px;font-weight:700;line-height:1;color:var(--gold)}
+.nb{background:var(--gold);color:#3b2a00;font-weight:700;border-radius:99px;padding:4px 14px;font-size:14px;animation:pop .4s}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;margin:6px 0}
+.stat{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:8px 4px}
+.stat b{display:block;font-size:22px}
+.stat small{color:var(--muted);font-size:12.5px}
+.rankup{color:var(--gold);font-weight:600}
+.missed{width:100%;text-align:left;display:flex;flex-direction:column;gap:7px;margin:4px 0}
+.missed h3{margin:6px 0 0;font-size:18px}
+.mw{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 12px;font-size:17px}
+.mw .a{font-weight:700}
+.mw .a.der{color:var(--der)}.mw .a.die{color:var(--die)}.mw .a.das{color:var(--das)}
+.mw small{color:var(--muted);font-size:14px;margin-left:4px}
+.mw .mh{color:#fde9a8;font-size:13.5px;margin-top:2px}
+.btns{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:8px}
+.bigbtn{border:0;border-radius:18px;padding:15px;font-size:20px;font-weight:700;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.3);color:#fff}
+.bigbtn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.bigbtn.p{background:linear-gradient(135deg,#3b82f6,#8b5cf6)}
+.bigbtn.g{background:linear-gradient(135deg,#10b981,#14b8a6)}
+.bigbtn.s{background:var(--card2);border:2px solid var(--line)}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:50}
+
+.cen{color:var(--muted);font-size:15px;font-weight:500;margin-top:6px}
+.cpl{display:none;font-size:30px;font-weight:700;margin-top:8px;color:#59608f}
+.cpl.die{color:var(--die)}
+.pls{display:grid;grid-template-columns:1fr;gap:8px;margin-top:6px}
+.plb{height:60px;border-radius:18px;background:var(--card2);border:2px solid var(--line);color:#fff;font-size:24px;font-weight:700;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.32)}
+.plb:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.32)}
+.pls.locked .plb{pointer-events:none}
+.pls.locked .plb.dim{opacity:.35}
+.pls.locked .plb.good{border-color:var(--gold);box-shadow:0 0 0 4px rgba(251,191,36,.9)}
+#game.waiting .pls{display:none}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+@keyframes slidein{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+@keyframes floatup{0%{opacity:0;transform:translate(-50%,10px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-70px)}}
+@keyframes blink{from{opacity:1}to{opacity:.65}}
+@media (max-height:640px){.plb{height:50px;font-size:21px}.art,.next{height:76px}.cnoun{font-size:46px}.fb{min-height:80px}#mascot svg{width:48px;height:48px}.hero svg{width:64px;height:64px}h1{font-size:32px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <section id="home" class="screen active">
+    <div class="topbar">
+      <div id="dayStreak" class="pill">🔥 0 days</div>
+      <button id="soundBtn" class="icon" aria-label="Sound on/off">🔊</button>
+    </div>
+    <div class="hero">
+      <div id="heroMascot"></div>
+      <h1>Artikel <span>Arena</span></h1>
+      <p class="sub">Pick the right <b class="der">der</b>, <b class="die">die</b> or <b class="das">das</b> — fast!</p>
+    </div>
+    <div class="panel rank">
+      <div class="row"><span id="rankName">Artikel-Neuling</span><small id="rankXp">0 XP</small></div>
+      <div class="meter"><i id="rankBar" style="width:0%"></i></div>
+      <small id="mastered">Mastered 0 / 500 words</small>
+    </div>
+    <div class="modes">
+      <button class="mode blitz" id="mBlitz"><span class="mi">⚡</span><span class="mt"><b>Blitz</b><small>60 s · each mistake costs 5 s</small></span><em id="bBlitz">Best 0</em></button>
+      <button class="mode surv" id="mSurv"><span class="mi">❤️</span><span class="mt"><b>Survival</b><small>3 lives · the clock gets faster</small></span><em id="bSurv">Best 0</em></button>
+      <button class="mode theme" id="mTheme"><span class="mi">🎯</span><span class="mt"><b>Topic training</b><small>10 words per round · learn the tips</small></span></button>
+      <button class="mode plur" id="mPlural"><span class="mi">🔢</span><span class="mt"><b>Plural practice</b><small id="pSub">Pick the right plural form</small></span></button>
+      <button class="mode fix" id="mFix"><span class="mi">🔁</span><span class="mt"><b>Fix my mistakes</b><small id="fixSub">Words you got wrong</small></span></button>
+    </div>
+    <div class="links">
+      <button class="link" id="cheatBtn">📒 Cheat sheet</button>
+      <button class="link" id="resetBtn">Reset progress</button>
+    </div>
+  </section>
+
+  <!-- THEMES -->
+  <section id="themes" class="screen">
+    <button class="link back" id="themesBack">← Back</button>
+    <h2 id="themesTitle">Choose a topic</h2>
+    <div class="themes" id="themeList"></div>
+  </section>
+
+  <!-- CHEAT SHEET -->
+  <section id="cheat" class="screen">
+    <button class="link back" id="cheatBack">← Back</button>
+    <h2>Cheat sheet</h2>
+    <div class="cheat">
+      <div class="grp der"><h3>der</h3><ul>
+        <li>Male people (der Vater, der Lehrer)</li>
+        <li>Days, parts of the day, months, seasons — except <i>die Nacht</i></li>
+        <li>Most weather: der Regen, der Schnee, der Wind</li>
+        <li>-ling, -ismus, -ist</li></ul></div>
+      <div class="grp die"><h3>die</h3><ul>
+        <li>Female people (die Mutter, die Lehrerin)</li>
+        <li>-ung, -heit, -keit, -schaft, -ion, -tät</li>
+        <li>-ik, -ur, -ei, -ie</li>
+        <li>Most nouns ending in -e (die Lampe, die Schule)</li></ul></div>
+      <div class="grp das"><h3>das</h3><ul>
+        <li>-chen, -lein (always!)</li>
+        <li>-um (das Museum), -ment (das Instrument)</li>
+        <li>Young beings: das Kind, das Baby</li>
+        <li>Most “ge-” collectives and infinitives used as nouns (das Essen)</li></ul></div>
+      <div class="grp tip"><h3>🧩 Compound nouns</h3>The <b>last part</b> decides: das Zimmer → <i>das</i> Wohnzimmer, der Tisch → <i>der</i> Schreibtisch.
+        <div class="note">These are tendencies, not laws — there are exceptions (der Moment, das Auge…). The tips in the game only appear when they match.</div></div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="screen">
+    <div class="hud">
+      <button id="quitBtn" class="icon" aria-label="Quit">✕</button>
+      <div class="score"><span id="score">0</span><small id="modeLbl"></small></div>
+      <div id="hudR" class="hudr"></div>
+    </div>
+    <div class="barwrap"><div id="bar"></div></div>
+    <div class="comborow"><div id="combo" class="combo">🔥</div><button id="gSound" class="icon sm" aria-label="Sound on/off">🔊</button></div>
+    <div class="stage" id="stage">
+      <div id="mascot"></div>
+      <div id="card" class="wcard">
+        <div id="chip" class="chip"></div>
+        <div id="cArt" class="cart">?</div>
+        <div id="cNoun" class="cnoun"></div>
+        <div id="cEn" class="cen"></div>
+        <div id="cPl" class="cpl"></div>
+      </div>
+      <div id="fb" class="fb" aria-live="polite"></div>
+    </div>
+    <div class="pls" id="pls"><button class="plb"></button><button class="plb"></button><button class="plb"></button></div>
+    <button id="nextBtn" class="next">Weiter ▶</button>
+    <div class="arts" id="arts">
+      <button class="art der" data-a="der">der<kbd>1</kbd></button>
+      <button class="art die" data-a="die">die<kbd>2</kbd></button>
+      <button class="art das" data-a="das">das<kbd>3</kbd></button>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section id="result" class="screen">
+    <div class="res">
+      <div id="resMascot"></div>
+      <h2 id="resTitle">Fertig!</h2>
+      <div id="resNew"></div>
+      <div class="big" id="resScore">0</div>
+      <div class="stats">
+        <div class="stat"><b id="rsCorrect">0</b><small>Correct</small></div>
+        <div class="stat"><b id="rsAcc">0%</b><small>Accuracy</small></div>
+        <div class="stat"><b id="rsStreak">0</b><small>Best streak</small></div>
+      </div>
+      <div id="resRank" class="rankup"></div>
+      <div class="missed" id="missed"></div>
+      <div class="btns">
+        <button class="bigbtn p" id="againBtn">Play again</button>
+        <button class="bigbtn g" id="practiceBtn">Practise my mistakes</button>
+        <button class="bigbtn s" id="homeBtn">Home</button>
+      </div>
+    </div>
+  </section>
+</div>
+<canvas id="fx"></canvas>
+
+<script>
+(()=>{
+'use strict';
+/* ---------- DATA (from 500_haeufige_deutsche_Nomen.xlsx) ----------
+   r = der, e = die, s = das ; format: "<r|e|s> Noun/Plural" (empty plural = none) */
+const ART={r:'der',e:'die',s:'das'};
+const RAW={
+'Familie und Menschen':['👨‍👩‍👧',`
+r Mensch/Menschen/human being
+r Mann/Männer/man
+e Frau/Frauen/woman
+s Kind/Kinder/child
+r Junge/Jungen/boy
+s Mädchen/Mädchen/girl
+s Baby/Babys/baby
+r Vater/Väter/father
+e Mutter/Mütter/mother
+r Bruder/Brüder/brother
+e Schwester/Schwestern/sister
+r Sohn/Söhne/son
+e Tochter/Töchter/daughter
+r Grossvater/Grossväter/grandfather
+e Grossmutter/Grossmütter/grandmother
+r Opa/Opas/grandpa
+e Oma/Omas/grandma
+r Onkel/Onkel/uncle
+e Tante/Tanten/aunt
+r Cousin/Cousins/cousin (m)
+e Cousine/Cousinen/cousin (f)
+r Freund/Freunde/friend (m)
+e Freundin/Freundinnen/friend (f)
+r Nachbar/Nachbarn/neighbour (m)
+e Nachbarin/Nachbarinnen/neighbour (f)
+r Kollege/Kollegen/colleague (m)
+e Kollegin/Kolleginnen/colleague (f)
+r Lehrer/Lehrer/teacher (m)
+e Lehrerin/Lehrerinnen/teacher (f)
+r Schüler/Schüler/pupil (m)
+e Schülerin/Schülerinnen/pupil (f)
+r Student/Studenten/student (m)
+e Studentin/Studentinnen/student (f)
+r Arzt/Ärzte/doctor (m)
+e Ärztin/Ärztinnen/doctor (f)
+r Chef/Chefs/boss (m)
+e Chefin/Chefinnen/boss (f)
+r Kunde/Kunden/customer (m)
+e Kundin/Kundinnen/customer (f)
+r Gast/Gäste/guest
+r Besucher/Besucher/visitor (m)
+e Besucherin/Besucherinnen/visitor (f)
+r Verkäufer/Verkäufer/salesperson (m)
+e Verkäuferin/Verkäuferinnen/salesperson (f)
+r Fahrer/Fahrer/driver (m)
+e Fahrerin/Fahrerinnen/driver (f)
+r Polizist/Polizisten/police officer (m)
+e Polizistin/Polizistinnen/police officer (f)
+r Koch/Köche/cook (m)
+e Köchin/Köchinnen/cook (f)`],
+'Zuhause und Wohnen':['🏠',`
+s Haus/Häuser/house
+e Wohnung/Wohnungen/apartment
+s Zimmer/Zimmer/room
+s Wohnzimmer/Wohnzimmer/living room
+s Schlafzimmer/Schlafzimmer/bedroom
+s Kinderzimmer/Kinderzimmer/child's room
+e Küche/Küchen/kitchen
+s Bad/Bäder/bath
+s Badezimmer/Badezimmer/bathroom
+r Flur/Flure/hallway
+r Balkon/Balkone/balcony
+r Garten/Gärten/garden
+e Tür/Türen/door
+s Fenster/Fenster/window
+e Wand/Wände/wall
+r Boden/Böden/floor
+e Decke/Decken/ceiling or blanket
+s Dach/Dächer/roof
+e Treppe/Treppen/stairs
+r Keller/Keller/basement
+e Garage/Garagen/garage
+r Schlüssel/Schlüssel/key
+r Tisch/Tische/table
+r Stuhl/Stühle/chair
+r Sessel/Sessel/armchair
+s Sofa/Sofas/sofa
+s Bett/Betten/bed
+r Schrank/Schränke/cupboard
+s Regal/Regale/shelf
+r Schreibtisch/Schreibtische/desk
+e Lampe/Lampen/lamp
+s Licht/Lichter/light
+r Spiegel/Spiegel/mirror
+r Teppich/Teppiche/carpet
+s Bild/Bilder/picture
+e Uhr/Uhren/clock or watch
+r Vorhang/Vorhänge/curtain
+s Kissen/Kissen/pillow
+s Handtuch/Handtücher/towel
+r Teller/Teller/plate
+e Tasse/Tassen/cup
+s Glas/Gläser/glass
+e Flasche/Flaschen/bottle
+r Topf/Töpfe/pot
+e Pfanne/Pfannen/frying pan
+s Messer/Messer/knife
+r Löffel/Löffel/spoon
+e Gabel/Gabeln/fork
+r Kühlschrank/Kühlschränke/fridge
+e Waschmaschine/Waschmaschinen/washing machine`],
+'Schule und Arbeit':['🎒',`
+e Schule/Schulen/school
+e Klasse/Klassen/class
+r Unterricht//lessons, teaching
+e Stunde/Stunden/lesson or hour
+e Pause/Pausen/break
+e Aufgabe/Aufgaben/task, exercise
+e Frage/Fragen/question
+e Antwort/Antworten/answer
+s Buch/Bücher/book
+s Heft/Hefte/notebook
+r Stift/Stifte/pen
+r Bleistift/Bleistifte/pencil
+r Kugelschreiber/Kugelschreiber/ballpoint pen
+e Seite/Seiten/page or side
+s Wort/Wörter/word
+r Satz/Sätze/sentence
+r Text/Texte/text
+e Sprache/Sprachen/language
+e Geschichte/Geschichten/story or history
+e Zahl/Zahlen/number
+e Regel/Regeln/rule
+e Prüfung/Prüfungen/exam
+e Note/Noten/grade
+r Fehler/Fehler/mistake
+s Beispiel/Beispiele/example
+r Computer/Computer/computer
+r Bildschirm/Bildschirme/screen
+e Tastatur/Tastaturen/keyboard
+e Maus/Mäuse/mouse
+r Drucker/Drucker/printer
+s Büro/Büros/office
+r Arbeitsplatz/Arbeitsplätze/workplace
+e Arbeit/Arbeiten/work
+r Beruf/Berufe/profession
+e Firma/Firmen/company
+s Unternehmen/Unternehmen/enterprise
+r Betrieb/Betriebe/business, operation
+r Mitarbeiter/Mitarbeiter/employee (m)
+e Mitarbeiterin/Mitarbeiterinnen/employee (f)
+r Termin/Termine/appointment
+e Besprechung/Besprechungen/meeting
+r Plan/Pläne/plan
+r Vertrag/Verträge/contract
+e E-Mail/E-Mails/email
+r Brief/Briefe/letter
+e Nachricht/Nachrichten/message
+s Formular/Formulare/form
+r Auszubildende/Auszubildenden/apprentice
+e Bewerbung/Bewerbungen/application
+e Bescheinigung/Bescheinigungen/certificate`],
+'Zeit und Alltag':['⏰',`
+r Tag/Tage/day
+e Woche/Wochen/week
+r Monat/Monate/month
+s Jahr/Jahre/year
+r Morgen/Morgen/morning
+r Mittag/Mittage/noon
+r Abend/Abende/evening
+e Nacht/Nächte/night
+e Minute/Minuten/minute
+e Sekunde/Sekunden/second
+r Moment/Momente/moment
+r Kalender/Kalender/calendar
+r Geburtstag/Geburtstage/birthday
+r Feiertag/Feiertage/public holiday
+r Urlaub/Urlaube/vacation
+e Reise/Reisen/trip
+r Anfang/Anfänge/beginning
+s Ende/Enden/end
+r Alltag/Alltage/everyday life
+r Besuch/Besuche/visit
+r Einkauf/Einkäufe/purchase, shopping
+r Laden/Läden/shop
+s Geschäft/Geschäfte/shop or business
+r Markt/Märkte/market
+e Rechnung/Rechnungen/bill, invoice
+r Preis/Preise/price
+s Geld/Gelder/money
+e Münze/Münzen/coin
+r Schein/Scheine/banknote
+e Karte/Karten/card or ticket
+e Tasche/Taschen/bag
+r Rucksack/Rucksäcke/backpack
+r Koffer/Koffer/suitcase
+r Regenschirm/Regenschirme/umbrella
+s Paket/Pakete/parcel
+e Post//mail, post office
+r Wecker/Wecker/alarm clock
+s Handy/Handys/mobile phone
+s Telefon/Telefone/telephone
+r Anruf/Anrufe/call
+e Hilfe/Hilfen/help
+r Wunsch/Wünsche/wish
+r Traum/Träume/dream
+e Idee/Ideen/idea
+r Grund/Gründe/reason
+e Möglichkeit/Möglichkeiten/possibility
+r Unterschied/Unterschiede/difference
+r Nachmittag/Nachmittage/afternoon
+r Feierabend/Feierabende/end of the work day
+e Verspätung/Verspätungen/delay`],
+'Essen und Trinken':['🍎',`
+s Essen//food, meal
+s Frühstück/Frühstücke/breakfast
+s Mittagessen/Mittagessen/lunch
+s Abendessen/Abendessen/dinner
+s Brot/Brote/bread
+s Brötchen/Brötchen/bread roll
+r Kuchen/Kuchen/cake
+e Torte/Torten/layer cake
+r Keks/Kekse/cookie
+e Schokolade/Schokoladen/chocolate
+s Obst//fruit
+r Apfel/Äpfel/apple
+e Banane/Bananen/banana
+e Orange/Orangen/orange
+e Zitrone/Zitronen/lemon
+e Birne/Birnen/pear
+e Traube/Trauben/grape
+e Erdbeere/Erdbeeren/strawberry
+e Kirsche/Kirschen/cherry
+e Kartoffel/Kartoffeln/potato
+e Tomate/Tomaten/tomato
+e Gurke/Gurken/cucumber
+e Karotte/Karotten/carrot
+e Zwiebel/Zwiebeln/onion
+r Salat/Salate/salad, lettuce
+s Gemüse//vegetables
+r Reis//rice
+e Nudel/Nudeln/noodle
+e Suppe/Suppen/soup
+r Käse/Käse/cheese
+e Butter//butter
+s Ei/Eier/egg
+s Fleisch//meat
+r Fisch/Fische/fish
+e Wurst/Würste/sausage
+e Milch//milk
+r Joghurt/Joghurts/yogurt
+s Wasser//water
+r Saft/Säfte/juice
+r Tee/Tees/tea
+r Kaffee/Kaffees/coffee
+e Limonade/Limonaden/lemonade
+s Getränk/Getränke/drink
+r Zucker//sugar
+s Salz//salt
+r Pfeffer//pepper
+e Sosse/Sossen/sauce
+r Geschmack/Geschmäcker/taste
+e Mahlzeit/Mahlzeiten/meal
+r Hunger//hunger`],
+'Stadt und unterwegs':['🚆',`
+e Stadt/Städte/city
+s Dorf/Dörfer/village
+r Ort/Orte/place
+e Strasse/Strassen/street
+r Weg/Wege/way, path
+r Platz/Plätze/square or place
+e Kreuzung/Kreuzungen/intersection
+e Ampel/Ampeln/traffic light
+r Bahnhof/Bahnhöfe/train station
+r Flughafen/Flughäfen/airport
+e Haltestelle/Haltestellen/stop
+r Bus/Busse/bus
+r Zug/Züge/train
+e Bahn/Bahnen/railway
+e Strassenbahn/Strassenbahnen/tram
+s Auto/Autos/car
+s Fahrrad/Fahrräder/bicycle
+s Motorrad/Motorräder/motorcycle
+s Taxi/Taxis/taxi
+s Flugzeug/Flugzeuge/airplane
+s Schiff/Schiffe/ship
+s Boot/Boote/boat
+e Fahrkarte/Fahrkarten/ticket
+r Fahrplan/Fahrpläne/timetable
+s Hotel/Hotels/hotel
+r Pass/Pässe/passport or pass
+e Grenze/Grenzen/border
+e Brücke/Brücken/bridge
+r Tunnel/Tunnel/tunnel
+r Park/Parks/park
+r Spielplatz/Spielplätze/playground
+r Supermarkt/Supermärkte/supermarket
+e Bäckerei/Bäckereien/bakery
+e Apotheke/Apotheken/pharmacy
+s Krankenhaus/Krankenhäuser/hospital
+e Praxis/Praxen/doctor's practice
+e Bank/Banken/bank or bench
+s Restaurant/Restaurants/restaurant
+s Café/Cafés/café
+s Kino/Kinos/cinema
+s Museum/Museen/museum
+e Bibliothek/Bibliotheken/library
+e Kirche/Kirchen/church
+s Schwimmbad/Schwimmbäder/swimming pool
+r Eingang/Eingänge/entrance
+r Ausgang/Ausgänge/exit
+s Trottoir/Trottoir/sidewalk (Swiss)
+r Hafen/Häfen/harbour
+e U-Bahn/U-Bahnen/subway
+r Parkplatz/Parkplätze/parking space`],
+'Natur und Wetter':['🌦️',`
+e Natur//nature
+e Welt/Welten/world
+e Erde/Erden/earth
+r Himmel/Himmel/sky
+e Sonne/Sonnen/sun
+r Mond/Monde/moon
+r Stern/Sterne/star
+r Planet/Planeten/planet
+r Baum/Bäume/tree
+r Wald/Wälder/forest
+r Busch/Büsche/bush
+e Blume/Blumen/flower
+e Pflanze/Pflanzen/plant
+s Gras/Gräser/grass
+s Blatt/Blätter/leaf
+r Ast/Äste/branch
+e Wurzel/Wurzeln/root
+r Berg/Berge/mountain
+s Tal/Täler/valley
+r Hügel/Hügel/hill
+r Felsen/Felsen/rock
+r Fluss/Flüsse/river
+r See/Seen/lake
+s Meer/Meere/sea
+r Strand/Strände/beach
+e Insel/Inseln/island
+r Wasserfall/Wasserfälle/waterfall
+e Quelle/Quellen/spring, source
+r Regen//rain
+r Schnee//snow
+r Wind/Winde/wind
+e Wolke/Wolken/cloud
+r Sturm/Stürme/storm
+s Gewitter/Gewitter/thunderstorm
+r Blitz/Blitze/lightning
+r Donner/Donner/thunder
+e Temperatur/Temperaturen/temperature
+s Wetter//weather
+e Jahreszeit/Jahreszeiten/season
+r Frühling/Frühlinge/spring
+r Sommer/Sommer/summer
+r Herbst/Herbste/autumn
+r Winter/Winter/winter
+s Feuer/Feuer/fire
+e Luft/Lüfte/air
+s Tier/Tiere/animal
+r Hund/Hunde/dog
+e Katze/Katzen/cat
+r Vogel/Vögel/bird
+e Landschaft/Landschaften/landscape`],
+'Körper und Gesundheit':['🩺',`
+r Körper/Körper/body
+r Kopf/Köpfe/head
+s Gesicht/Gesichter/face
+s Haar/Haare/hair
+s Auge/Augen/eye
+s Ohr/Ohren/ear
+e Nase/Nasen/nose
+r Mund/Münder/mouth
+r Zahn/Zähne/tooth
+r Hals/Hälse/neck, throat
+e Schulter/Schultern/shoulder
+r Arm/Arme/arm
+e Hand/Hände/hand
+r Finger/Finger/finger
+r Rücken/Rücken/back
+r Bauch/Bäuche/belly
+s Bein/Beine/leg
+r Fuss/Füsse/foot
+s Knie/Knie/knee
+s Herz/Herzen/heart
+s Blut//blood
+e Haut/Häute/skin
+r Muskel/Muskeln/muscle
+e Stimme/Stimmen/voice
+e Gesundheit//health
+e Krankheit/Krankheiten/illness
+r Schmerz/Schmerzen/pain
+s Fieber//fever
+r Husten//cough
+r Schnupfen//runny nose
+e Erkältung/Erkältungen/cold
+e Medizin//medicine
+s Medikament/Medikamente/medication
+e Tablette/Tabletten/tablet
+e Untersuchung/Untersuchungen/examination
+e Wunde/Wunden/wound
+e Brille/Brillen/glasses
+e Kleidung//clothing
+s Hemd/Hemden/shirt
+e Hose/Hosen/trousers
+s Kleid/Kleider/dress
+r Rock/Röcke/skirt
+r Schuh/Schuhe/shoe
+e Jacke/Jacken/jacket
+r Mantel/Mäntel/coat
+e Mütze/Mützen/cap, hat
+r Patient/Patienten/patient (m)
+e Patientin/Patientinnen/patient (f)
+r Verband/Verbände/bandage
+e Salbe/Salben/ointment`],
+'Freizeit und Kultur':['🎬',`
+s Spiel/Spiele/game
+r Sport/Sportarten/sport
+r Ball/Bälle/ball
+r Fussball/Fussbälle/football
+s Spielzeug/Spielsachen/toy
+e Musik/Musiken/music
+s Lied/Lieder/song
+r Film/Filme/film
+s Foto/Fotos/photo
+s Fernsehen//television
+r Fernseher/Fernseher/TV set
+s Radio/Radios/radio
+e Zeitung/Zeitungen/newspaper
+e Zeitschrift/Zeitschriften/magazine
+r Roman/Romane/novel
+s Märchen/Märchen/fairy tale
+s Gedicht/Gedichte/poem
+s Theater/Theater/theatre
+s Konzert/Konzerte/concert
+e Ausstellung/Ausstellungen/exhibition
+s Fest/Feste/celebration
+e Feier/Feiern/party
+r Tanz/Tänze/dance
+s Hobby/Hobbys/hobby
+r Verein/Vereine/club
+e Mannschaft/Mannschaften/team
+r Spieler/Spieler/player (m)
+e Spielerin/Spielerinnen/player (f)
+r Trainer/Trainer/coach (m)
+e Trainerin/Trainerinnen/coach (f)
+s Instrument/Instrumente/instrument
+e Gitarre/Gitarren/guitar
+s Klavier/Klaviere/piano
+r Ausflug/Ausflüge/excursion
+r Spaziergang/Spaziergänge/walk
+e Wanderung/Wanderungen/hike
+e Kamera/Kameras/camera
+s Internet//internet
+e Webseite/Webseiten/website
+s Video/Videos/video
+e Sendung/Sendungen/broadcast, show
+r Wettbewerb/Wettbewerbe/competition
+r Zuschauer/Zuschauer/spectator (m)
+e Zuschauerin/Zuschauerinnen/spectator (f)
+r Sänger/Sänger/singer (m)
+e Sängerin/Sängerinnen/singer (f)
+r Musiker/Musiker/musician (m)
+e Musikerin/Musikerinnen/musician (f)
+e Eintrittskarte/Eintrittskarten/admission ticket
+r Reiseführer/Reiseführer/travel guide`],
+'Wichtige Begriffe und Dinge':['💡',`
+e Sache/Sachen/thing, matter
+s Ding/Dinge/thing
+s Leben/Leben/life
+e Zeit/Zeiten/time
+r Teil/Teile/part
+r Punkt/Punkte/point
+e Linie/Linien/line
+r Name/Namen/name
+e Nummer/Nummern/number
+e Farbe/Farben/colour
+e Form/Formen/shape, form
+e Grösse/Grössen/size
+r Wert/Werte/value
+e Menge/Mengen/amount
+e Gruppe/Gruppen/group
+e Familie/Familien/family
+e Person/Personen/person
+s Paar/Paare/couple, pair
+e Beziehung/Beziehungen/relationship
+e Liebe//love
+e Freude/Freuden/joy
+e Angst/Ängste/fear
+e Hoffnung/Hoffnungen/hope
+r Gedanke/Gedanken/thought
+e Meinung/Meinungen/opinion
+e Entscheidung/Entscheidungen/decision
+s Problem/Probleme/problem
+e Lösung/Lösungen/solution
+e Information/Informationen/information
+e Veränderung/Veränderungen/change
+r Erfolg/Erfolge/success
+r Versuch/Versuche/attempt
+r Schritt/Schritte/step
+s Ziel/Ziele/goal
+r Fall/Fälle/case, fall
+e Art/Arten/kind, type
+r Bereich/Bereiche/area
+e Gesellschaft/Gesellschaften/society
+e Regierung/Regierungen/government
+s Land/Länder/country
+s Ergebnis/Ergebnisse/result
+s Gefühl/Gefühle/feeling
+e Bedeutung/Bedeutungen/meaning
+e Erfahrung/Erfahrungen/experience
+e Erinnerung/Erinnerungen/memory
+s Ereignis/Ereignisse/event
+e Ursache/Ursachen/cause
+e Folge/Folgen/consequence
+e Schwierigkeit/Schwierigkeiten/difficulty
+r Zusammenhang/Zusammenhänge/connection`]
+};
+const THEMES=Object.keys(RAW);
+const WORDS=[];
+for(const th of THEMES){
+  for(const line of RAW[th][1].split('\n')){
+    const l=line.trim(); if(!l) continue;
+    const art=ART[l[0]]; const [noun,pl,en]=l.slice(2).split('/');
+    WORDS.push({id:art+' '+noun,art,noun,plural:pl||'',en:en||'',theme:th});
+  }
+}
+
+/* ---------- HINTS (only shown when they match the real article) ---------- */
+const fold=s=>s.toLowerCase().replace(/ä/g,'a').replace(/ö/g,'o').replace(/ü/g,'u');
+const byArt={der:[],die:[],das:[]}; WORDS.forEach(w=>byArt[w.art].push(w));
+const person=new Map();
+byArt.der.forEach(m=>{
+  const fm=fold(m.noun), stems=[fm,fm.replace(/e$/,'')];
+  byArt.die.forEach(f=>{const ff=fold(f.noun); if(stems.some(s=>ff===s+'in')||ff===fm+'e'){person.set(m.id,'m');person.set(f.id,'f');}});
+});
+['Vater','Bruder','Sohn','Opa','Onkel','Mann','Junge'].forEach(n=>person.set('der '+n,'m'));
+['Mutter','Schwester','Tochter','Oma','Tante','Frau'].forEach(n=>person.set('die '+n,'f'));
+const baseOf=new Map();
+WORDS.forEach(w=>{
+  if(w.id==='der Mittag'||w.id==='das Beispiel') return;
+  const lw=w.noun.toLowerCase(); let best=null;
+  WORDS.forEach(b=>{
+    if(b===w||b.art!==w.art) return;
+    const lb=b.noun.toLowerCase();
+    if(lb.length<3||!lw.endsWith(lb)) return;
+    const pre=lw.slice(0,lw.length-lb.length);
+    if(pre.length<3&&!pre.endsWith('-')) return;
+    if(!best||lb.length>best.noun.length) best=b;
+  });
+  if(best) baseOf.set(w.id,best);
+});
+const YOUNG=new Set(['Kind','Baby','Mädchen']);
+const TIME=new Set(['Tag','Monat','Morgen','Mittag','Abend','Frühling','Sommer','Herbst','Winter']);
+const WEATHER=new Set(['Regen','Schnee','Wind','Sturm','Blitz','Donner']);
+const SUF=[
+ [/ung$/,'die','Words ending in -ung are die'],
+ [/(heit|keit)$/,'die','Words ending in -heit / -keit are always die'],
+ [/schaft$/,'die','Words ending in -schaft are die'],
+ [/ion$/,'die','Words ending in -ion are die'],
+ [/tät$/,'die','Words ending in -tät are die'],
+ [/ik$/,'die','Words ending in -ik are mostly die'],
+ [/ur$/,'die','Words ending in -ur are mostly die'],
+ [/ei$/,'die','Words ending in -ei are mostly die'],
+ [/ie$/,'die','Words ending in -ie are mostly die'],
+ [/chen$/,'das','Words ending in -chen are always das'],
+ [/lein$/,'das','Words ending in -lein are always das'],
+ [/um$/,'das','Words ending in -um are mostly das'],
+ [/ist$/,'der','Words ending in -ist (people) are der'],
+ [/ling$/,'der','Words ending in -ling are der'],
+ [/e$/,'die','Words ending in -e are mostly die']
+];
+function makeHint(w){
+  if(w.noun==='Nacht') return 'Exception! Parts of the day are der — but it is die Nacht.';
+  if(w.art==='das'&&YOUNG.has(w.noun)) return 'Young beings are das: das Kind, das Baby, das Mädchen.';
+  const b=baseOf.get(w.id);
+  if(b) return 'Compound noun: the last part “'+b.noun+'” decides → '+w.art+'.';
+  const p=person.get(w.id);
+  if(p==='m'&&w.art==='der') return 'Male person → der (the female form ends in -in → die).';
+  if(p==='f'&&w.art==='die') return 'Female person → die.';
+  if(w.art==='der'&&TIME.has(w.noun)) return 'Days, parts of the day, months and seasons are der.';
+  if(w.art==='der'&&WEATHER.has(w.noun)) return 'Most weather words (rain, snow, wind, storm…) are der.';
+  const lw=w.noun.toLowerCase();
+  for(const [re,art,txt] of SUF) if(art===w.art&&re.test(lw)) return txt+'.';
+  return '';
+}
+WORDS.forEach(w=>{w.hint=makeHint(w);});
+
+/* ---------- STORAGE ---------- */
+const KEY='artikel-arena-v1';
+const defaults=()=>({stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{last:'',streak:0},games:0});
+let S=defaults();
+try{const raw=localStorage.getItem(KEY); if(raw){const o=JSON.parse(raw); S=Object.assign(defaults(),o); S.best=Object.assign({blitz:0,surv:0},o.best); S.day=Object.assign({last:'',streak:0},o.day);}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const boxOf=(w,st)=>{const t=(st||S.stats)[w.id];return (t&&t.b)||0;};
+const WGT=[6,4,3,2,1];
+const mistakesPool=()=>WORDS.filter(w=>S.stats[w.id]&&S.stats[w.id].w>0&&S.stats[w.id].b<3);
+
+/* ---------- HELPERS ---------- */
+const $=id=>document.getElementById(id);
+const now=()=>performance.now();
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));}
+function wpick(pool,n,skip,st){
+  const a=pool.filter(w=>!skip||!skip.has(w.id)); const out=[];
+  while(out.length<n&&a.length){
+    let tot=0; const ws=a.map(w=>{const x=WGT[Math.min(4,boxOf(w,st))];tot+=x;return x;});
+    let r=Math.random()*tot,i=0; for(;i<a.length;i++){r-=ws[i]; if(r<=0)break;}
+    if(i>=a.length) i=a.length-1; out.push(a.splice(i,1)[0]);
+  }
+  return out;
+}
+const RANKS=[[0,'Artikel-Neuling','🐣'],[300,'Genus-Lehrling','🌱'],[1200,'Genus-Geselle','🔧'],[3000,'Artikel-Ass','🎯'],[6000,'Genus-Meister','🏅'],[12000,'Artikel-Legende','👑']];
+function rankInfo(xp){let i=0; RANKS.forEach((r,k)=>{if(xp>=r[0])i=k;}); const cur=RANKS[i],nxt=RANKS[i+1]; return {i,cur,nxt,pct:nxt?(xp-cur[0])/(nxt[0]-cur[0])*100:100};}
+const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}};
+const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function umlaut(n){
+  const ms=[...n.matchAll(/au|a|o|u/gi)]; if(!ms.length) return n; const m=ms[ms.length-1];
+  const map={au:'äu',a:'ä',o:'ö',u:'ü'}; let r=map[m[0].toLowerCase()];
+  if(m[0][0]!==m[0][0].toLowerCase()) r=r[0].toUpperCase()+r.slice(1);
+  return n.slice(0,m.index)+r+n.slice(m.index+m[0].length);
+}
+function pluralOptions(w){
+  const n=w.noun, u=umlaut(n);
+  const c=/e$/.test(n)?[n,n+'s',n+'r']:/[aiouyäöü]$/i.test(n)?[n+'s',n+'n',n+'en']:/(el|er|en)$/.test(n)?[n,n+'s',u,n+'n']:[n+'e',n+'en',n+'s',n+'er',u+'e',u+'er',u,n+'n'];
+  const pool=[...new Set(c)].filter(x=>x!==w.plural);
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const o=pool.slice(0,2); o.push(w.plural);
+  for(let i=o.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[o[i],o[j]]=[o[j],o[i]];}
+  return o;
+}
+
+/* ---------- SOUND ---------- */
+let AC=null;
+function ac(){ if(!S.sound) return null; try{ if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){AC=null;} return AC; }
+function tone(f,at,d,type,vol){
+  const a=ac(); if(!a) return;
+  try{
+    const o=a.createOscillator(),g=a.createGain(),t=a.currentTime+at;
+    o.type=type||'sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol||.12,t+.02); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+d+.05);
+  }catch(e){}
+}
+const sfx={
+  right(m){tone(520+m*40,0,.12,'triangle');tone(780+m*50,.08,.18,'triangle');},
+  wrong(){tone(200,0,.25,'sawtooth',.07);tone(150,.12,.3,'sawtooth',.07);},
+  combo(){[523,659,784,1047].forEach((f,i)=>tone(f,i*.07,.2,'triangle',.12));},
+  end(){[784,659,523,392].forEach((f,i)=>tone(f,i*.12,.25,'triangle',.1));},
+  win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.09,.25,'triangle',.12));}
+};
+function syncSound(){const t=S.sound?'🔊':'🔇'; $('soundBtn').textContent=t; $('gSound').textContent=t;}
+function toggleSound(){S.sound=!S.sound; save(); syncSound(); if(S.sound){ac();tone(660,0,.12,'triangle');}}
+
+/* ---------- MASCOT ---------- */
+function mascot(mood){
+  const eyes=mood==='happy'
+    ?'<path d="M24 40 Q30 31 36 40M44 40 Q50 31 56 40" fill="none" stroke="#2b1700" stroke-width="3" stroke-linecap="round"/>'
+    :'<circle cx="30" cy="38" r="7" fill="#fff"/><circle cx="50" cy="38" r="7" fill="#fff"/><circle cx="'+(mood==='sad'?30:31)+'" cy="'+(mood==='sad'?41:39)+'" r="3.4" fill="#2b1700"/><circle cx="'+(mood==='sad'?50:51)+'" cy="'+(mood==='sad'?41:39)+'" r="3.4" fill="#2b1700"/>'
+     +(mood==='sad'?'<path d="M22 28 L36 32M58 28 L44 32" stroke="#2b1700" stroke-width="2.5" stroke-linecap="round"/>':'');
+  const mouth={
+    happy:'<path d="M29 50 Q40 64 51 50" fill="none" stroke="#5b2a0a" stroke-width="3" stroke-linecap="round"/>',
+    sad:'<path d="M30 59 Q40 49 50 59" fill="none" stroke="#5b2a0a" stroke-width="3" stroke-linecap="round"/>',
+    wow:'<ellipse cx="40" cy="56" rx="5" ry="6.5" fill="#5b2a0a"/>',
+    neutral:'<path d="M32 56 Q40 60 48 56" fill="none" stroke="#5b2a0a" stroke-width="3" stroke-linecap="round"/>'
+  }[mood||'neutral'];
+  return '<svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="26" cy="14" r="6" fill="#3b82f6"/><circle cx="40" cy="9" r="6" fill="#ec4899"/><circle cx="54" cy="14" r="6" fill="#10b981"/>'
+   +'<rect x="8" y="15" width="64" height="60" rx="26" fill="#fbbf24"/><ellipse cx="26" cy="26" rx="10" ry="5" fill="#fff" opacity=".25"/>'
+   +'<circle cx="21" cy="52" r="4.5" fill="#fb7185" opacity=".55"/><circle cx="59" cy="52" r="4.5" fill="#fb7185" opacity=".55"/>'+eyes+mouth+'</svg>';
+}
+const setMascot=(id,m)=>{$(id).innerHTML=mascot(m);};
+
+/* ---------- CONFETTI ---------- */
+const cv=$('fx'),cx=cv.getContext('2d'); let parts=[],raf=0;
+function fit(){const d=window.devicePixelRatio||1; cv.width=innerWidth*d; cv.height=innerHeight*d; cx.setTransform(d,0,0,d,0,0);}
+addEventListener('resize',fit); fit();
+function burst(x,y,n){
+  if(RM) n=Math.ceil(n/4);
+  const cols=['#3b82f6','#ec4899','#10b981','#fbbf24','#fff'];
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=3+Math.random()*7;
+    parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-5,g:.28,l:60+Math.random()*30,s:4+Math.random()*5,r:Math.random()*6,c:cols[i%cols.length]});}
+  if(!raf) raf=requestAnimationFrame(loopFx);
+}
+function loopFx(){
+  cx.clearRect(0,0,innerWidth,innerHeight);
+  parts=parts.filter(p=>p.l>0);
+  parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.vx*=.99;p.l--;p.r+=.2;cx.globalAlpha=Math.min(1,p.l/25);cx.fillStyle=p.c;cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.fillRect(-p.s/2,-p.s/3,p.s,p.s*.6);cx.restore();});
+  cx.globalAlpha=1;
+  if(parts.length) raf=requestAnimationFrame(loopFx); else {raf=0;cx.clearRect(0,0,innerWidth,innerHeight);}
+}
+const cardCenter=()=>{const r=$('card').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2];};
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  const ri=rankInfo(S.xp);
+  $('rankName').textContent=ri.cur[2]+' '+ri.cur[1];
+  $('rankXp').textContent=S.xp+' XP'+(ri.nxt?' · next at '+ri.nxt[0]:'');
+  $('rankBar').style.width=ri.pct+'%';
+  const m=WORDS.filter(w=>boxOf(w)>=3).length;
+  $('mastered').textContent='Mastered '+m+' / '+WORDS.length+' words';
+  $('bBlitz').textContent='Best '+S.best.blitz; $('bSurv').textContent='Best '+S.best.surv;
+  const n=mistakesPool().length;
+  $('fixSub').textContent=n?n+' word'+(n>1?'s':'')+' to repeat':'Nothing to fix yet — nice!';
+  $('mFix').disabled=!n;
+  const pp=WORDS.filter(w=>w.plural);$('pSub').textContent='Pick the right plural · '+pp.filter(w=>boxOf(w,S.pst)>=3).length+' / '+pp.length+' mastered';
+  const d=S.day.streak||0; $('dayStreak').textContent='🔥 '+d+' day'+(d===1?'':'s');
+  setMascot('heroMascot','happy'); syncSound();
+}
+let themeKind='art';
+function renderThemes(){
+  const isP=themeKind==='plural', st=isP?S.pst:S.stats, base=isP?WORDS.filter(w=>w.plural):WORDS;
+  $('themesTitle').textContent=isP?'Plural practice — choose a topic':'Choose a topic';
+  const box=$('themeList'); box.innerHTML='';
+  const mk=(emoji,name,pool)=>{
+    const done=pool.filter(w=>boxOf(w,st)>=3).length;
+    const b=document.createElement('button'); b.className='th';
+    b.innerHTML='<span class="e">'+emoji+'</span><span class="tt"><span>'+name+'</span><span class="meter"><i style="width:'+(done/pool.length*100)+'%"></i></span><small>'+done+' / '+pool.length+' mastered</small></span>';
+    b.onclick=()=>start('train',{pool,label:name,plural:isP});
+    box.appendChild(b);
+  };
+  mk('🎲','All topics mixed',base);
+  THEMES.forEach(t=>mk(RAW[t][0],t,base.filter(w=>w.theme===t)));
+}
+
+/* ---------- GAME ---------- */
+let G=null;
+function start(mode,opts){
+  opts=opts||{}; ac();
+  clearInterval(G&&G.timer); clearTimeout(G&&G.next);
+  const g=G={mode,opts,kind:opts.plural?'plural':'art',score:0,streak:0,bestStreak:0,firstN:0,firstOk:0,missed:new Map(),phase:'idle',cur:null,curRetry:false,recent:[],lives:3,correctCount:0,over:false,done:0,total:0,next:0,timer:0,final:false};
+  if(mode==='train'){
+    const pool=opts.pool, n=Math.min(opts.n||10,pool.length);
+    g.queue=wpick(pool,n,null,g.kind==='plural'?S.pst:S.stats).map(w=>({w,retry:false})); g.total=g.queue.length;
+  }
+  $('modeLbl').textContent={blitz:'⚡ Blitz',surv:'❤️ Survival',train:(opts.plural?'🔢 ':'🎯 ')+(opts.label||'Training')}[mode];
+  $('score').textContent='0';
+  $('bar').className=''; $('bar').style.width='100%';
+  if(mode==='blitz') g.endAt=now()+60000;
+  show('game'); renderHud(); setCombo();
+  nextWord();
+  g.timer=setInterval(tick,100);
+}
+function renderHud(){
+  const g=G; if(!g) return;
+  if(g.mode==='blitz') {/* tick handles it */}
+  else if(g.mode==='surv') $('hudR').textContent='❤️'.repeat(Math.max(0,g.lives))+'🖤'.repeat(Math.max(0,3-g.lives));
+  else {$('hudR').textContent=Math.min(g.done,g.total)+' / '+g.total; $('bar').style.width=(g.done/g.total*100)+'%';}
+}
+function setCombo(){
+  const g=G,el=$('combo'); const mult=Math.min(5,1+Math.floor(g.streak/5));
+  if(g.streak>=2){el.textContent='🔥 '+g.streak+(mult>1?'  ×'+mult:''); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');}
+  else el.classList.remove('on');
+}
+function tick(){
+  const g=G; if(!g||g.over) return; const t=now();
+  if(g.mode==='blitz'){
+    const left=Math.max(0,g.endAt-t);
+    $('bar').style.width=(left/60000*100)+'%'; $('bar').classList.toggle('warn',left<10000);
+    $('hudR').textContent='⏱ '+Math.ceil(left/1000);
+    if(left<=0) endGame();
+  } else if(g.mode==='surv'&&g.phase==='ask'){
+    const left=g.wordEnd-t;
+    $('bar').style.width=Math.max(0,left/g.wordDur*100)+'%'; $('bar').classList.toggle('warn',left/g.wordDur<.35);
+    if(left<=0) answer(null);
+  }
+}
+function nextWord(){
+  const g=G; if(!g||g.over) return;
+  clearTimeout(g.next);
+  let w;
+  if(g.mode==='train'){const q=g.queue.shift(); w=q.w; g.curRetry=q.retry;}
+  else{w=wpick(WORDS,1,new Set(g.recent))[0]; g.curRetry=false; g.recent.push(w.id); if(g.recent.length>30) g.recent.shift();}
+  g.cur=w; g.final=false; g.phase='ask'; g.t0=now();
+  if(g.mode==='surv'){g.wordDur=Math.max(2500,6000-g.correctCount*120); g.wordEnd=g.t0+g.wordDur; $('bar').style.width='100%'; $('bar').classList.remove('warn');}
+  const card=$('card'); card.className='wcard'; void card.offsetWidth; card.className='wcard enter';
+  const isP=g.kind==='plural';
+  $('cArt').textContent=isP?w.art:'?'; $('cArt').className='cart'+(isP?' '+w.art:'');
+  $('cEn').textContent=w.en;
+  $('cPl').style.display=isP?'block':'none'; $('cPl').textContent='die ?'; $('cPl').className='cpl';
+  $('arts').style.display=isP?'none':''; $('pls').style.display=isP?'':'none'; $('pls').className='pls';
+  if(isP){g.opts3=pluralOptions(w); $('pls').querySelectorAll('.plb').forEach((b,i)=>{b.textContent='die '+g.opts3[i]; b.dataset.p=g.opts3[i]; b.className='plb';});}
+  const n=$('cNoun'); n.textContent=w.noun; n.style.fontSize=(w.noun.length>13?36:w.noun.length>10?42:w.noun.length>8?50:58)+'px';
+  $('chip').textContent=(g.curRetry?'🔁 Again · ':'')+(isP?'Plural · ':'')+w.theme;
+  $('fb').innerHTML='';
+  $('arts').className='arts'; $('arts').querySelectorAll('.art').forEach(b=>b.className='art '+b.dataset.a);
+  $('game').classList.remove('waiting');
+  setMascot('mascot','neutral');
+}
+function floatTxt(txt,cls){
+  const e=document.createElement('div'); e.className='float '+(cls||''); e.textContent=txt;
+  $('stage').appendChild(e); setTimeout(()=>e.remove(),1050);
+}
+const CHEERS={5:'Läuft!',10:'Stark!',15:'Wahnsinn!',20:'Unaufhaltsam!',25:'Genie!'};
+function answer(choice){
+  const g=G; if(!g||g.over||g.phase!=='ask') return;
+  const w=g.cur, isP=g.kind==='plural', ok=choice===(isP?w.plural:w.art), ms=now()-g.t0;
+  g.phase='fb';
+    const counts=!g.curRetry;
+  if(counts){
+    g.firstN++; if(ok) g.firstOk++;
+    const store=isP?S.pst:S.stats, st=store[w.id]||(store[w.id]={b:0,r:0,w:0});
+    if(ok){st.r++; st.b=Math.min(4,st.b+1);} else {st.w++; st.b=0;}
+  }
+  let verdict;
+  if(ok){
+    g.streak++; g.correctCount++; g.bestStreak=Math.max(g.bestStreak,g.streak);
+    const mult=Math.min(5,1+Math.floor(g.streak/5));
+    const bonus=Math.max(0,Math.round((2500-ms)/2500*50));
+    const gain=(100+bonus)*mult; g.score+=gain;
+    $('score').textContent=g.score; $('score').classList.remove('pop'); void $('score').offsetWidth; $('score').classList.add('pop');
+    floatTxt('+'+gain);
+    $('card').classList.add('ok'); setMascot('mascot','happy');
+    verdict='<div class="verdict ok">✓ Richtig!</div>';
+    const [x,y]=cardCenter();
+    if(CHEERS[g.streak]||(g.streak>25&&g.streak%5===0)){floatTxt(CHEERS[g.streak]||'Unaufhaltsam!','cheer'); burst(x,y,70); sfx.combo(); buzz(30);}
+    else {sfx.right(Math.min(g.streak,8)); burst(x,y,8);}
+  } else {
+    g.streak=0; g.missed.set(w.id,w);
+    $('card').classList.add('bad'); setMascot('mascot',choice===null?'wow':'sad');
+    verdict='<div class="verdict no">'+(choice===null?'⏰ Too slow!':'✗ Not quite')+' — it’s '+(isP?'die '+w.plural:w.art+' '+w.noun)+'</div>';
+    sfx.wrong(); buzz(60);
+    if(g.mode==='blitz'){g.endAt-=5000; floatTxt('−5 s','neg');}
+    if(g.mode==='surv'){g.lives--; renderHud();}
+    if(g.mode==='train') g.queue.splice(Math.min(3,g.queue.length),0,{w,retry:true});
+  }
+  if(g.mode==='train'&&counts){g.done++; renderHud();}
+  setCombo();
+  // reveal
+  let pl;
+  if(isP){
+    $('cPl').textContent='die '+w.plural; $('cPl').className='cpl die';
+    $('pls').className='pls locked'; $('pls').querySelectorAll('.plb').forEach(b=>b.classList.add(b.dataset.p===w.plural?'good':'dim'));
+    pl=ok?'<b>'+w.art+' '+w.noun+' → die '+w.plural+'</b>':'';
+  } else {
+    $('cArt').textContent=w.art; $('cArt').className='cart '+w.art;
+    $('arts').className='arts locked';
+    $('arts').querySelectorAll('.art').forEach(b=>{ if(b.dataset.a===w.art) b.classList.add('good'); else b.classList.add('dim'); });
+    pl=w.plural?'Plural: <b>die '+w.plural+'</b>':'<b>No plural</b> (used in the singular)';
+  }
+  $('fb').innerHTML=verdict+'<div class="pl">'+pl+'</div>'+(!isP&&w.hint?'<div class="hint">💡 '+w.hint+'</div>':'');
+  save();
+  g.final=(g.mode==='surv'&&g.lives<=0)||(g.mode==='train'&&g.queue.length===0);
+  if(ok){
+    g.next=setTimeout(proceed,g.mode==='blitz'?480:(w.hint?1300:900));
+  } else {
+    g.phase='wait'; $('game').classList.add('waiting');
+    $('nextBtn').textContent=g.final?'See results ▶':'Weiter ▶';
+    if(g.mode==='blitz') g.next=setTimeout(proceed,1700);
+  }
+}
+function proceed(){
+  const g=G; if(!g||g.over) return;
+  clearTimeout(g.next);
+  if(g.final) endGame(); else nextWord();
+}
+function endGame(){
+  const g=G; if(!g||g.over) return;
+  g.over=true; clearInterval(g.timer); clearTimeout(g.next);
+  const acc=g.firstN?Math.round(g.firstOk/g.firstN*100):0;
+  const before=rankInfo(S.xp).i;
+  S.xp+=g.score; S.games++;
+  const key=g.mode==='blitz'?'blitz':g.mode==='surv'?'surv':null;
+  const isBest=!!key&&g.score>S.best[key]&&g.score>0;
+  if(isBest) S.best[key]=g.score;
+  const d=new Date(),ds=d=>d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  const today=ds(d), y=new Date(d.getTime()-864e5);
+  if(S.day.last!==today){S.day.streak=(S.day.last===ds(y))?S.day.streak+1:1; S.day.last=today;}
+  save();
+  const after=rankInfo(S.xp);
+  $('game').classList.remove('waiting');
+  const good=acc>=80||isBest;
+  setMascot('resMascot',good?'happy':acc>=50?'neutral':'sad');
+  $('resTitle').textContent=acc>=90?'Fantastisch! 🎉':acc>=70?'Stark gespielt!':acc>=50?'Weiter so!':'Übung macht den Meister!';
+  $('resNew').innerHTML=isBest?'<span class="nb">🏆 New best!</span>':'';
+  $('resScore').textContent=g.score;
+  $('rsCorrect').textContent=g.firstOk+'/'+g.firstN;
+  $('rsAcc').textContent=acc+'%'; $('rsStreak').textContent=g.bestStreak;
+  $('resRank').textContent=after.i>before?'🎖️ Rank up: '+after.cur[2]+' '+after.cur[1]+'!':'+'+g.score+' XP';
+  const miss=[...g.missed.values()], box=$('missed');
+  box.innerHTML=miss.length?'<h3>Review these ('+miss.length+')</h3>'+miss.map(w=>'<div class="mw"><span class="a '+w.art+'">'+w.art+'</span> <b>'+w.noun+'</b><small>'+(w.plural?'die '+w.plural:'no plural')+' · '+w.en+'</small>'+(g.kind==='art'&&w.hint?'<div class="mh">💡 '+w.hint+'</div>':'')+'</div>').join(''):'<h3>No mistakes — perfect! 🌟</h3>';
+  g.missList=miss;
+  $('practiceBtn').style.display=miss.length?'block':'none';
+  $('practiceBtn').textContent='Practise these '+miss.length+' word'+(miss.length>1?'s':'');
+  show('result'); $('result').scrollTop=0;
+  if(good){sfx.win(); burst(innerWidth/2,innerHeight*.3,120);} else sfx.end();
+}
+function quit(){
+  if(G){G.over=true; clearInterval(G.timer); clearTimeout(G.next);}
+  go('home');
+}
+function go(screen){
+  if(screen==='home') renderHome();
+  if(screen==='themes') renderThemes();
+  show(screen);
+}
+
+/* ---------- EVENTS ---------- */
+$('mBlitz').onclick=()=>start('blitz');
+$('mSurv').onclick=()=>start('surv');
+$('mTheme').onclick=()=>{themeKind='art';go('themes');};
+$('mPlural').onclick=()=>{themeKind='plural';go('themes');};
+$('pls').querySelectorAll('.plb').forEach(b=>b.onclick=()=>answer(b.dataset.p));
+$('mFix').onclick=()=>{const p=mistakesPool(); if(p.length) start('train',{pool:p,n:12,label:'Fix my mistakes'});};
+$('themesBack').onclick=()=>go('home');
+$('cheatBtn').onclick=()=>go('cheat');
+$('cheatBack').onclick=()=>go('home');
+$('quitBtn').onclick=quit;
+$('homeBtn').onclick=()=>go('home');
+$('againBtn').onclick=()=>start(G.mode,G.opts);
+$('practiceBtn').onclick=()=>{const m=G.missList||[]; if(m.length) start('train',{pool:m,n:12,label:'Review',plural:G.kind==='plural'});};
+$('nextBtn').onclick=proceed;
+$('soundBtn').onclick=toggleSound; $('gSound').onclick=toggleSound;
+$('arts').querySelectorAll('.art').forEach(b=>b.onclick=()=>answer(b.dataset.a));
+let rt=0;
+$('resetBtn').onclick=()=>{
+  const b=$('resetBtn');
+  if(b.dataset.arm){S=defaults(); save(); b.dataset.arm=''; b.textContent='Reset progress'; clearTimeout(rt); renderHome(); return;}
+  b.dataset.arm='1'; b.textContent='Tap again to erase everything';
+  rt=setTimeout(()=>{b.dataset.arm=''; b.textContent='Reset progress';},4000);
+};
+addEventListener('keydown',e=>{
+  const g=G; if(!g||g.over||!$('game').classList.contains('active')) return;
+  const map={'1':'der','ArrowLeft':'der','2':'die','ArrowDown':'die','3':'das','ArrowRight':'das'};
+  if(e.key==='Escape'){quit();return;}
+  if(g.phase==='ask'&&map[e.key]){e.preventDefault(); const ix={'1':0,'ArrowLeft':0,'2':1,'ArrowDown':1,'3':2,'ArrowRight':2}[e.key]; answer(g.kind==='plural'?g.opts3[ix]:map[e.key]);}
+  else if(g.phase==='wait'&&(e.key==='Enter'||e.key===' '||map[e.key])){e.preventDefault(); proceed();}
+});
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{
+  const g=G; if(!g||g.over) return;
+  if(document.hidden) hiddenAt=now();
+  else if(hiddenAt){const dt=now()-hiddenAt; hiddenAt=0; if(g.endAt) g.endAt+=dt; if(g.wordEnd) g.wordEnd+=dt;}
+});
+
+renderHome();
+window.__artikel={WORDS,THEMES,get G(){return G;},start,answer,proceed,S:()=>S}; // handy for debugging
+})();
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+}
+</script>
+</body>
+</html>
