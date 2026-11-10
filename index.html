@@ -175,6 +175,21 @@ h2{margin:6px 0 10px;font-size:26px}
 .faqlist .ans ul,.faqlist .ans ol{margin:6px 0 0;padding-left:20px}
 .faqlist .ans li{margin-bottom:5px}
 .ver{text-align:center;color:var(--muted);font-size:12.5px;margin-top:10px}
+.cloudst{text-align:center;color:var(--muted);font-size:12.5px;margin-top:4px;min-height:16px}
+.cbox{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;line-height:1.45;font-size:15px}
+.cbox h3{margin:0 0 6px;font-size:17px}
+.cbox p{margin:6px 0;color:#d6d9f5}
+.cbox.warn{border-color:var(--gold)}
+.code{font-size:30px;font-weight:700;letter-spacing:2px;text-align:center;padding:14px 6px;background:var(--bg);border:2px dashed var(--gold);border-radius:14px;margin:10px 0;user-select:all;-webkit-user-select:all;word-break:break-all}
+.cbtn{display:block;width:100%;padding:13px 16px;border-radius:16px;border:0;background:var(--der);color:#fff;font-size:16.5px;font-weight:600;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.3);margin:8px 0}
+.cbtn.alt{background:var(--card2)}
+.cbtn.gold{background:var(--gold);color:#2a2100}
+.cbtn.danger{background:#7f1d3a}
+.cbtn:disabled{opacity:.5}
+.cin{width:100%;padding:13px 14px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--text);font:inherit;font-size:20px;letter-spacing:2px;text-transform:uppercase;text-align:center}
+.cmsg{min-height:20px;font-size:14px;margin:4px 0;text-align:center}
+.cmsg.err{color:#fda4af}.cmsg.ok{color:#86efac}
+
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
 @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
 @keyframes slidein{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
@@ -214,10 +229,12 @@ h2{margin:6px 0 10px;font-size:26px}
     </div>
     <div class="links">
       <button class="link" id="cheatBtn">📒 Cheat sheet</button>
+      <button class="link" id="cloudBtn" hidden>☁️ Secret code</button>
       <button class="link" id="faqBtn">❓ FAQ / Hilfe</button>
       <button class="link" id="resetBtn">Reset progress</button>
     </div>
     <div class="ver" id="ver"></div>
+    <div class="cloudst" id="cloudSt"></div>
   </section>
 
   <!-- THEMES -->
@@ -264,6 +281,13 @@ h2{margin:6px 0 10px;font-size:26px}
     <div class="langs"><button class="lang" data-l="en">English</button><button class="lang" data-l="de">Deutsch</button></div>
     <div class="faqlist" id="faqList"></div>
     <div class="ver" id="faqVer"></div>
+  </section>
+
+  <!-- CLOUD / SECRET CODE -->
+  <section id="cloud" class="screen">
+    <button class="link back" id="cloudBack">← Back</button>
+    <h2>☁️ Secret code</h2>
+    <div id="cloudBody"></div>
   </section>
 
   <!-- GAME -->
@@ -324,7 +348,7 @@ h2{margin:6px 0 10px;font-size:26px}
 'use strict';
 /* ---------- DATA (from 500_haeufige_deutsche_Nomen.xlsx) ----------
    r = der, e = die, s = das ; format: "<r|e|s> Noun/Plural" (empty plural = none) */
-const VERSION='1.2.1', VDATE='10 Nov 2026';
+const VERSION='1.3.0', VDATE='10 Nov 2026';
 const ART={r:'der',e:'die',s:'das'};
 const RAW={
 'Familie und Menschen':['👨‍👩‍👧',`
@@ -910,10 +934,11 @@ WORDS.forEach(w=>{w.hint=makeHint(w);});
 
 /* ---------- STORAGE ---------- */
 const KEY='artikel-arena-v1';
-const defaults=()=>({lang:'en',stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{last:'',streak:0},games:0});
+const defaults=()=>({lang:'en',stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{last:'',streak:0},games:0,rv:0,cloud:null});
 let S=defaults();
 try{const raw=localStorage.getItem(KEY); if(raw){const o=JSON.parse(raw); S=Object.assign(defaults(),o); S.best=Object.assign({blitz:0,surv:0},o.best); S.day=Object.assign({last:'',streak:0},o.day);}}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const save=()=>{persist(); if(typeof schedSync==='function') schedSync();};
 ['stats','pst'].forEach(k=>{S[k]=S[k]||{}; for(const id in S[k]){const e=S[k][id]; if(e.st) continue; const b=e.b||0; e.st=b>=3?'a':'l'; e.s=Math.min(b,3); e.ld=''; e.rm=0; delete e.b;}});
 const todayKey=()=>{if(window.__today) return window.__today; const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();};
 const statusOf=(w,st)=>{const e=(st||S.stats)[w.id]; return e?e.st:'l';};
@@ -1056,8 +1081,176 @@ function renderHome(){
   const pp=WORDS.filter(w=>w.plural);$('pSub').textContent='Pick the right plural · '+pp.filter(w=>statusOf(w,S.pst)==='m').length+' / '+pp.length+' mastered';
   const d=S.day.streak||0; $('dayStreak').textContent='🔥 '+d+' day'+(d===1?'':'s');
   $('ver').textContent='Artikel Arena v'+VERSION+' · '+VDATE;
+  $('cloudBtn').hidden=!cloudAvail(); $('cloudBtn').textContent=cloudOn()?'☁️ Secret code ✓':'☁️ Secret code'; paintCloud();
   setMascot('heroMascot','happy'); syncSound();
 }
+
+
+/* ---------- CLOUD: secret code + sync ---------- */
+// Fill these two values after creating the Supabase project (see supabase.sql). Empty = feature hidden.
+const CLOUD={url:'',key:''};
+const CODE_ABC='ABCDEFGHJKMNPQRSTUVWXYZ23456789', CODE_LEN=12;
+const cloudAvail=()=>!!(CLOUD.url&&CLOUD.key&&window.crypto&&crypto.subtle&&typeof fetch==='function');
+const cloudOn=()=>cloudAvail()&&S.cloud&&S.cloud.code;
+function genCode(){
+  let out='';
+  while(out.length<CODE_LEN){
+    const a=new Uint8Array(32); crypto.getRandomValues(a);
+    for(const b of a){ if(b<248 && out.length<CODE_LEN) out+=CODE_ABC[b%31]; } // 248 = 31*8, no modulo bias
+  }
+  return out;
+}
+const fmtCode=c=>c.replace(/(.{4})(?=.)/g,'$1-');
+function normCode(x){
+  const c=String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(c.length!==CODE_LEN) return {err:'A code has '+CODE_LEN+' letters and digits (for example K7QF-2M9X-PD4T).'};
+  for(const ch of c) if(CODE_ABC.indexOf(ch)<0) return {err:'Codes never contain 0, O, 1, I or L. Please check for typos.'};
+  return {code:c};
+}
+async function hashCode(c){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('artikel-arena:'+c));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function rpc(fn,args){
+  const h={'Content-Type':'application/json',apikey:CLOUD.key};
+  if(/^eyJ/.test(CLOUD.key)) h.Authorization='Bearer '+CLOUD.key;
+  const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),12000);
+  try{
+    const r=await fetch(CLOUD.url.replace(/\/$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:h,body:JSON.stringify(args),signal:ctl.signal});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const txt=await r.text(); return txt?JSON.parse(txt):null;
+  } finally{clearTimeout(t);}
+}
+/* what goes to the cloud: progress only (no sound setting, no local link info) */
+const snap=()=>JSON.parse(JSON.stringify({lang:S.lang,stats:S.stats,pst:S.pst,best:S.best,xp:S.xp,day:S.day,games:S.games,rv:S.rv||0}));
+const hasProgress=o=>!!(o&&((o.xp||0)>0||(o.games||0)>0||Object.keys(o.stats||{}).length||Object.keys(o.pst||{}).length));
+const stRank=e=>e.st==='m'?2:e.st==='a'?1:0;
+const dayNum=k=>{if(!k) return 0; const p=k.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).getTime()||0;};
+function mergeStore(a,b){
+  const out={}; a=a||{}; b=b||{};
+  new Set(Object.keys(a).concat(Object.keys(b))).forEach(id=>{
+    const x=a[id], y=b[id];
+    if(!x||!y){out[id]=Object.assign({},x||y); return;}
+    let win=stRank(x)!==stRank(y)?(stRank(x)>stRank(y)?x:y):((x.s||0)!==(y.s||0)?((x.s||0)>(y.s||0)?x:y):((x.r+x.w)>=(y.r+y.w)?x:y));
+    const m=Object.assign({},win);
+    m.r=Math.max(x.r||0,y.r||0); m.w=Math.max(x.w||0,y.w||0);
+    m.ld=dayNum(x.ld)>=dayNum(y.ld)?x.ld:y.ld;
+    out[id]=m;
+  });
+  return out;
+}
+function mergeStates(a,b){
+  if((a.rv||0)!==(b.rv||0)) return JSON.parse(JSON.stringify((a.rv||0)>(b.rv||0)?a:b)); // a reset on one device wins
+  const bd=(a.best||{}), cd=(b.best||{});
+  const dayWin=(dayNum(a.day&&a.day.last)>dayNum(b.day&&b.day.last))?a.day:(dayNum(a.day&&a.day.last)<dayNum(b.day&&b.day.last))?b.day:((a.day&&a.day.streak||0)>=(b.day&&b.day.streak||0)?a.day:b.day);
+  return {lang:a.lang||b.lang,stats:mergeStore(a.stats,b.stats),pst:mergeStore(a.pst,b.pst),
+    best:{blitz:Math.max(bd.blitz||0,cd.blitz||0),surv:Math.max(bd.surv||0,cd.surv||0)},
+    xp:Math.max(a.xp||0,b.xp||0),games:Math.max(a.games||0,b.games||0),rv:a.rv||0,
+    day:Object.assign({last:'',streak:0},dayWin||{})};
+}
+function adopt(m){ // write merged progress into S (mutating, so running code keeps working)
+  S.stats=m.stats||{}; S.pst=m.pst||{}; S.best=Object.assign({blitz:0,surv:0},m.best); S.xp=m.xp||0; S.games=m.games||0;
+  S.day=Object.assign({last:'',streak:0},m.day); S.rv=m.rv||0; if(m.lang) S.lang=m.lang;
+}
+let cloudState='idle', syncing=false, syncAgain=false, syncTimer=0;
+function setCloudState(st){cloudState=st; paintCloud();}
+function schedSync(){ if(!cloudOn()) return; clearTimeout(syncTimer); syncTimer=setTimeout(sync,3500); }
+async function sync(){
+  if(!cloudOn()) return;
+  if(syncing){syncAgain=true; return;}
+  syncing=true; setCloudState('busy');
+  try{
+    const h=await hashCode(S.cloud.code);
+    const r=await rpc('aa_load',{h:h});
+    if(r&&r.data){ adopt(mergeStates(snap(),r.data)); }
+    await rpc('aa_save',{h:h,d:snap()});
+    S.cloud.last=Date.now(); persist(); setCloudState('ok');
+    if($('home').classList.contains('active')) renderHome();
+  }catch(e){ setCloudState('err'); }
+  finally{ syncing=false; if(syncAgain){syncAgain=false; schedSync();} }
+}
+function paintCloud(){
+  const el=$('cloudSt'); if(!el) return;
+  if(!cloudOn()){ el.textContent=''; return; }
+  el.textContent=cloudState==='busy'?'☁️ Syncing…':cloudState==='err'?'☁️ Offline — will retry':(cloudState==='ok'||S.cloud.last)?'☁️ Synced':'';
+}
+const cmsg=(t,k)=>{const m=$('cMsg'); if(m){m.textContent=t||''; m.className='cmsg'+(k?' '+k:'');}};
+function renderCloud(){
+  const b=$('cloudBody');
+  if(!cloudAvail()){ b.innerHTML='<div class="cbox"><p>Syncing is not available in this version of the game.</p></div>'; return; }
+  if(cloudOn()){
+    const last=S.cloud.last?new Date(S.cloud.last).toLocaleString():'not yet';
+    b.innerHTML='<div class="cbox"><h3>This device is linked</h3><p>Your progress is saved to the cloud automatically. Use the same code on another device to continue there.</p>'+
+      '<div class="code" id="codeShow">•••• •••• ••••</div>'+
+      '<button class="cbtn alt" id="cShow">Show code</button><button class="cbtn alt" id="cCopy">Copy code</button>'+
+      '<p style="font-size:13px;color:var(--muted)">Last sync: '+last+'</p><div class="cmsg" id="cMsg"></div></div>'+
+      '<button class="cbtn" id="cSync">Sync now</button>'+
+      '<button class="cbtn alt" id="cOut">Unlink this device (keeps progress here)</button>'+
+      '<button class="cbtn danger" id="cDel">Delete my cloud copy</button>'+
+      '<div class="cbox warn"><p><b>Keep your code private.</b> Anyone who types it can play and overwrite your progress. If you lose it, we cannot recover it (the game does not know who you are).</p></div>';
+    let shown=false; const code=fmtCode(S.cloud.code);
+    $('cShow').onclick=()=>{shown=!shown; $('codeShow').textContent=shown?code:'•••• •••• ••••'; $('cShow').textContent=shown?'Hide code':'Show code';};
+    $('cCopy').onclick=()=>copyText(code).then(ok=>cmsg(ok?'Copied.':'Could not copy — tap “Show code” and write it down.',ok?'ok':'err'));
+    $('cSync').onclick=async()=>{cmsg('Syncing…'); await sync(); cmsg(cloudState==='ok'?'Synced.':'No connection. Will retry automatically.',cloudState==='ok'?'ok':'err');};
+    let ao=0,ad=0;
+    $('cOut').onclick=()=>{ if(!ao){ao=1;$('cOut').textContent='Tap again to unlink'; setTimeout(()=>{ao=0;$('cOut').textContent='Unlink this device (keeps progress here)';},4000); return;} S.cloud=null; persist(); renderHome(); renderCloud(); };
+    $('cDel').onclick=async()=>{ if(!ad){ad=1;$('cDel').textContent='Tap again: delete cloud copy and unlink'; setTimeout(()=>{ad=0;$('cDel').textContent='Delete my cloud copy';},4000); return;}
+      try{ await rpc('aa_delete',{h:await hashCode(S.cloud.code)}); S.cloud=null; persist(); renderHome(); renderCloud(); }catch(e){ cmsg('No connection. Nothing was deleted.','err'); } };
+    return;
+  }
+  b.innerHTML='<div class="cbox"><h3>Continue on any device</h3><p>No account, no e-mail, no password. You get a <b>secret code</b>. Type it on another device and your progress follows you.</p></div>'+
+    '<button class="cbtn gold" id="cNew">Create my secret code</button>'+
+    '<div class="cbox"><h3>I already have a code</h3><input class="cin" id="cIn" placeholder="XXXX-XXXX-XXXX" maxlength="20" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text"><div class="cmsg" id="cMsg"></div><button class="cbtn" id="cGo">Continue with this code</button></div>';
+  $('cNew').onclick=()=>{ const c=genCode(); renderNewCode(c); };
+  $('cGo').onclick=()=>loginWith($('cIn').value);
+  $('cIn').addEventListener('keydown',e=>{if(e.key==='Enter') loginWith($('cIn').value);});
+}
+function copyText(t){
+  if(navigator.clipboard&&navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(()=>true,()=>false);
+  return Promise.resolve(false);
+}
+function renderNewCode(c){
+  const code=fmtCode(c);
+  $('cloudBody').innerHTML='<div class="cbox warn"><h3>Your secret code</h3><div class="code">'+code+'</div>'+
+    '<button class="cbtn alt" id="cCopy">Copy code</button><div class="cmsg" id="cMsg"></div>'+
+    '<p><b>Write it down now</b> (notes app, password manager, paper). You need it to continue on another device.</p>'+
+    '<p>Anyone who knows this code can play as you. If you lose it, nobody can recover it.</p></div>'+
+    '<button class="cbtn gold" id="cSaved">I saved it — start syncing</button><button class="cbtn alt" id="cCancel">Cancel</button>';
+  $('cCopy').onclick=()=>copyText(code).then(ok=>cmsg(ok?'Copied.':'Could not copy — please write it down.',ok?'ok':'err'));
+  $('cCancel').onclick=()=>renderCloud();
+  $('cSaved').onclick=async()=>{
+    $('cSaved').disabled=true; cmsg('Connecting…');
+    try{
+      const h=await hashCode(c);
+      await rpc('aa_save',{h:h,d:snap()});
+      S.cloud={code:c,last:Date.now()}; persist(); setCloudState('ok'); renderHome(); renderCloud();
+    }catch(e){ $('cSaved').disabled=false; cmsg('No connection — please try again.','err'); }
+  };
+}
+async function loginWith(raw){
+  const n=normCode(raw); if(n.err){cmsg(n.err,'err'); return;}
+  $('cGo').disabled=true; cmsg('Checking…');
+  try{
+    const h=await hashCode(n.code);
+    const r=await rpc('aa_load',{h:h});
+    if(!r||!r.data){ cmsg('Code not found. Please check for typos.','err'); $('cGo').disabled=false; return; }
+    const remote=r.data;
+    const finish=async(mode)=>{
+      if(mode==='cloud') adopt(remote);
+      else if(mode==='merge'){ const l=snap(); l.rv=remote.rv||0; adopt(mergeStates(l,remote)); }
+      else { S.rv=Date.now(); }            // keep this device: bump reset-version so it wins everywhere
+      S.cloud={code:n.code,last:0}; persist(); await sync(); renderHome(); renderCloud();
+    };
+    if(!hasProgress(snap())||!hasProgress(remote)){ await finish(hasProgress(remote)?'cloud':'device'); return; }
+    $('cloudBody').innerHTML='<div class="cbox warn"><h3>Progress found on both sides</h3><p>This device and the cloud both have progress. What should we do?</p></div>'+
+      '<button class="cbtn gold" id="mMerge">Combine both (recommended)</button>'+
+      '<button class="cbtn alt" id="mCloud">Use the cloud progress only</button>'+
+      '<button class="cbtn alt" id="mDev">Keep this device only (replaces the cloud)</button>'+
+      '<p style="font-size:13px;color:var(--muted)">“Combine” keeps the best status of every word and the higher scores. Nothing is lost.</p>';
+    $('mMerge').onclick=()=>finish('merge'); $('mCloud').onclick=()=>finish('cloud'); $('mDev').onclick=()=>finish('device');
+  }catch(e){ cmsg('No connection — please try again.','err'); const g=$('cGo'); if(g) g.disabled=false; }
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&cloudOn()) sync(); else if(document.hidden&&cloudOn()) { clearTimeout(syncTimer); sync(); } });
 
 const FAQ={
 en:[
@@ -1065,30 +1258,32 @@ en:[
 [`What do the game modes do?`,`<ul><li>⚡ <b>Blitz</b>: 60 seconds. A wrong answer costs 5 seconds.</li><li>❤️ <b>Survival</b>: 3 lives. The time per word shrinks from 6 to 2.5 seconds.</li><li>🎯 <b>Topic training</b>: rounds of 10 words from one topic. Words you miss come back a few cards later.</li><li>🔢 <b>Plural practice</b>: choose the correct plural out of three options.</li><li>🔁 <b>Fix my mistakes</b>: practises the words you got wrong and have not mastered yet.</li></ul>`],
 [`How do points, combos and ranks work?`,`A correct answer gives 100 points plus up to 50 for speed. This is multiplied by your combo: ×2 from 5 correct answers in a row, up to ×5. Points count as XP and raise your rank (from Artikel-Neuling to Artikel-Legende). The daily streak counts the days on which you finished at least one game.`],
 [`When does a word count as “mastered”?`,`Every word goes through three stages:<ul><li><b>Learning</b>: fewer than 3 correct answers in a row.</li><li><b>Almost mastered 🌓</b>: 3 correct answers in a row.</li><li><b>Mastered ⭐</b>: answered correctly again on a different day. If the 3rd correct answer already falls on a different day than the 2nd, the word becomes mastered right away.</li></ul>Only the first attempt of a word counts. Repeats inside Topic training only help you remember. Articles and plurals have separate progress.`],
-[`When is progress reset?`,`The game never resets your overall progress by itself. This is what can happen to a single word:<ul><li><b>Learning</b>: a wrong answer sets the streak back to 0 / 3.</li><li><b>Almost mastered</b>: a wrong answer does not change the stage. It never goes back to the start.</li><li><b>Mastered</b>: a wrong answer drops it to almost mastered. One correct answer (the same day is fine) makes it mastered again.</li></ul>Your whole progress is deleted only if you tap “Reset progress” yourself or your browser removes the saved data (see below).`],
-[`How do I reset my progress myself?`,`<ol><li>Go to the home screen and tap <b>Reset progress</b> (bottom right).</li><li>The button changes to “Tap again to erase everything”. Tap it again within 4 seconds. If you wait longer, nothing happens.</li></ol>This erases points, XP and rank, best scores, the daily streak and the progress of all words (articles and plurals). It cannot be undone. Deleting the website data in your browser has the same effect.`],
-[`How do I avoid losing my progress by accident?`,`Progress is saved only on your own device, in the browser. It is not uploaded anywhere, so it can only disappear locally. To keep it:<ul><li>Always use the <b>same device, the same browser (or Home Screen app) and the same web address</b>.</li><li>On iPhone and iPad, the <b>Home Screen app and Safari keep separate progress</b>. Pick one and stick to it. Adding the app to the Home Screen and always opening it from the icon is the safest choice.</li><li>Do not clear website data: in Safari, “Clear History and Website Data” deletes your progress. Chrome’s “Cookies and site data” does the same.</li><li>Do not use private browsing. Progress is lost when you close the tab.</li><li>Do not delete the Home Screen icon. Removing the app also removes its saved data.</li><li>If the web address changes (new domain or new repository name), progress does not move with it.</li><li>Safari may delete the data of websites you have not opened for about 7 days. Apps added to the Home Screen are not affected.</li><li>Phone, tablet and computer do not sync. Each device has its own progress.</li></ul>`],
-[`Does the game work offline?`,`Yes. Open it once with an internet connection. After that it also works offline, for example in airplane mode.`],
+[`When is progress reset?`,`The game never resets your overall progress by itself. This is what can happen to a single word:<ul><li><b>Learning</b>: a wrong answer sets the streak back to 0 / 3.</li><li><b>Almost mastered</b>: a wrong answer does not change the stage. It never goes back to the start.</li><li><b>Mastered</b>: a wrong answer drops it to almost mastered. One correct answer (the same day is fine) makes it mastered again.</li></ul>Your whole progress is deleted only if you tap “Reset progress” yourself or your browser removes the saved data and you have no secret code (see below).`],
+[`How do I reset my progress myself?`,`<ol><li>Go to the home screen and tap <b>Reset progress</b> (bottom right).</li><li>The button changes to “Tap again to erase everything”. Tap it again within 4 seconds. If you wait longer, nothing happens.</li></ol>This erases points, XP and rank, best scores, the daily streak and the progress of all words (articles and plurals). If this device is linked with a secret code, the cloud copy is reset too, and your other devices follow. It cannot be undone. Deleting the website data in your browser has the same effect.`],
+[`Can I continue on another device? (Secret code)`,`Yes. On the home screen tap <b>☁️ Secret code</b> and choose <b>Create my secret code</b>. You get a code made of 12 letters and digits, for example <i>K7QF-2M9X-PD4T</i>. There is no account, e-mail or password. Write the code down. On another device tap ☁️ Secret code, enter it, and your progress appears there. After that, progress syncs automatically in the background.<ul><li>If both devices already have progress, you can <b>combine</b> them: every word keeps its best status and you keep the higher scores.</li><li><b>Keep the code private.</b> Anyone who types it can play as you and change your progress.</li><li><b>If you lose the code, nobody can recover it</b>, because the game does not know who you are. Your progress on the devices that are already linked stays, and you can create a new code there.</li><li>Only your progress is uploaded (word statuses, XP, best scores, daily streak). The code itself is stored in a scrambled form (hash) on the server.</li><li>You can unlink a device or delete the cloud copy at any time on the same screen.</li></ul>`],
+[`How do I avoid losing my progress by accident?`,`Without a secret code, progress is saved only on your own device, in the browser. With a secret code it is also saved in the cloud, so a lost device or cleared browser data no longer means a lost progress. To keep it safe:<ul><li>Create a <b>secret code</b> and write it down. This is the best protection.</li><li>Always use the <b>same device, the same browser (or Home Screen app) and the same web address</b>.</li><li>On iPhone and iPad, the <b>Home Screen app and Safari keep separate progress</b>. Pick one and stick to it. Adding the app to the Home Screen and always opening it from the icon is the safest choice.</li><li>Do not clear website data: in Safari, “Clear History and Website Data” deletes your progress. Chrome’s “Cookies and site data” does the same.</li><li>Do not use private browsing. Progress is lost when you close the tab.</li><li>Do not delete the Home Screen icon. Removing the app also removes its saved data.</li><li>If the web address changes (new domain or new repository name), progress does not move with it.</li><li>Safari may delete the data of websites you have not opened for about 7 days. Apps added to the Home Screen are not affected.</li><li>Without a secret code, phone, tablet and computer do not sync. Each device has its own progress.</li></ul>`],
+[`Does the game work offline?`,`Yes. Open it once with an internet connection. After that it also works offline, for example in airplane mode. If you use a secret code, your progress syncs the next time you are online.`],
 [`How do I update the app?`,`Open it twice. The first time it loads the new version in the background, the second time you see it. The version number is shown at the bottom of the home screen.`],
 [`Why do some words have no plural?`,`Some nouns are only used in the singular, such as <i>Unterricht</i>, <i>Obst</i> or <i>Liebe</i>. They appear in the article games but not in Plural practice, which uses 472 of the 500 words.`],
 [`How reliable are the tips?`,`The tips are rules of thumb, not laws. A tip is only shown when it matches the correct article, but there are exceptions in German (for example <i>der Moment</i> or <i>das Auge</i>).`],
 [`Why “Strasse” and not “Straße”?`,`The word list uses Swiss spelling, with ss instead of ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Version history`,`<ul><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
+[`Version history`,`<ul><li><b>1.3.0</b>: secret code to continue on other devices, with automatic sync.</li><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
 ],
 de:[
 [`Was ist Artikel Arena?`,`Ein Spiel, mit dem du die deutschen Artikel <b>der, die, das</b> an den 500 häufigsten Nomen übst, inklusive Plural. Unter jedem Wort steht klein die englische Bedeutung. Nach jeder Antwort gibt es einen kurzen Tipp, wenn eine Regel passt.`],
 [`Was machen die Spielmodi?`,`<ul><li>⚡ <b>Blitz</b>: 60 Sekunden. Eine falsche Antwort kostet 5 Sekunden.</li><li>❤️ <b>Survival</b>: 3 Leben. Die Zeit pro Wort sinkt von 6 auf 2,5 Sekunden.</li><li>🎯 <b>Themen-Training</b>: Runden mit 10 Wörtern aus einem Thema. Falsche Wörter kommen nach ein paar Karten wieder.</li><li>🔢 <b>Plural-Training</b>: Wähle den richtigen Plural aus drei Möglichkeiten.</li><li>🔁 <b>Fehler korrigieren</b>: übt die Wörter, die du falsch hattest und noch nicht gemeistert hast.</li></ul>`],
 [`Wie funktionieren Punkte, Combos und Ränge?`,`Eine richtige Antwort gibt 100 Punkte plus bis zu 50 für Tempo. Das wird mit deiner Combo multipliziert: ×2 ab 5 richtigen Antworten in Folge, bis zu ×5. Punkte zählen als XP und erhöhen deinen Rang (von Artikel-Neuling bis Artikel-Legende). Die Tagesserie zählt die Tage, an denen du mindestens ein Spiel beendet hast.`],
 [`Wann gilt ein Wort als „gemeistert“?`,`Jedes Wort durchläuft drei Stufen:<ul><li><b>Lernen</b>: weniger als 3 richtige Antworten in Folge.</li><li><b>Fast gemeistert 🌓</b>: 3 richtige Antworten in Folge.</li><li><b>Gemeistert ⭐</b>: an einem anderen Tag nochmals richtig beantwortet. Fällt die 3. richtige Antwort schon auf einen anderen Tag als die 2., ist das Wort sofort gemeistert.</li></ul>Nur der erste Versuch eines Wortes zählt. Wiederholungen im Themen-Training helfen nur beim Merken. Artikel und Plural haben getrennte Fortschritte.`],
-[`Wann wird der Fortschritt zurückgesetzt?`,`Das Spiel setzt deinen Gesamtfortschritt nie von selbst zurück. Bei einem einzelnen Wort kann Folgendes passieren:<ul><li><b>Lernen</b>: eine falsche Antwort setzt die Serie auf 0 / 3 zurück.</li><li><b>Fast gemeistert</b>: eine falsche Antwort ändert die Stufe nicht. Es fällt nie an den Anfang zurück.</li><li><b>Gemeistert</b>: eine falsche Antwort stuft es auf „fast gemeistert“ zurück. Eine richtige Antwort (auch am selben Tag) macht es wieder gemeistert.</li></ul>Dein gesamter Fortschritt wird nur gelöscht, wenn du selbst „Reset progress“ antippst oder dein Browser die gespeicherten Daten entfernt (siehe unten).`],
-[`Wie setze ich meinen Fortschritt selbst zurück?`,`<ol><li>Gehe zum Startbildschirm und tippe unten rechts auf <b>Reset progress</b>.</li><li>Die Schaltfläche ändert sich zu „Tap again to erase everything“. Tippe innerhalb von 4 Sekunden nochmals darauf. Wartest du länger, passiert nichts.</li></ol>Das löscht Punkte, XP und Rang, Bestwerte, die Tagesserie und den Fortschritt aller Wörter (Artikel und Plural). Es lässt sich nicht rückgängig machen. Das Löschen der Website-Daten im Browser hat die gleiche Wirkung.`],
-[`Wie vermeide ich, dass mein Fortschritt versehentlich verloren geht?`,`Der Fortschritt wird nur auf deinem eigenen Gerät im Browser gespeichert. Er wird nirgends hochgeladen und kann deshalb nur lokal verschwinden. So bleibt er erhalten:<ul><li>Benutze immer <b>dasselbe Gerät, denselben Browser (oder dieselbe Home-Bildschirm-App) und dieselbe Webadresse</b>.</li><li>Auf iPhone und iPad haben die <b>Home-Bildschirm-App und Safari getrennte Fortschritte</b>. Entscheide dich für eine Variante. Am sichersten ist es, die App zum Home-Bildschirm hinzuzufügen und immer über das Symbol zu öffnen.</li><li>Lösche keine Website-Daten: In Safari löscht „Verlauf und Websitedaten löschen“ deinen Fortschritt. In Chrome hat „Cookies und Websitedaten“ dieselbe Wirkung.</li><li>Benutze keinen privaten Modus. Der Fortschritt geht verloren, sobald du den Tab schliesst.</li><li>Lösche das Symbol auf dem Home-Bildschirm nicht. Mit der App werden auch ihre gespeicherten Daten entfernt.</li><li>Ändert sich die Webadresse (neue Domain oder neuer Repository-Name), wandert der Fortschritt nicht mit.</li><li>Safari kann die Daten von Websites löschen, die du etwa 7 Tage nicht geöffnet hast. Apps auf dem Home-Bildschirm sind davon nicht betroffen.</li><li>Handy, Tablet und Computer werden nicht synchronisiert. Jedes Gerät hat seinen eigenen Fortschritt.</li></ul>`],
-[`Funktioniert das Spiel offline?`,`Ja. Öffne es einmal mit Internetverbindung. Danach funktioniert es auch offline, zum Beispiel im Flugmodus.`],
+[`Wann wird der Fortschritt zurückgesetzt?`,`Das Spiel setzt deinen Gesamtfortschritt nie von selbst zurück. Bei einem einzelnen Wort kann Folgendes passieren:<ul><li><b>Lernen</b>: eine falsche Antwort setzt die Serie auf 0 / 3 zurück.</li><li><b>Fast gemeistert</b>: eine falsche Antwort ändert die Stufe nicht. Es fällt nie an den Anfang zurück.</li><li><b>Gemeistert</b>: eine falsche Antwort stuft es auf „fast gemeistert“ zurück. Eine richtige Antwort (auch am selben Tag) macht es wieder gemeistert.</li></ul>Dein gesamter Fortschritt wird nur gelöscht, wenn du selbst „Reset progress“ antippst oder dein Browser die gespeicherten Daten entfernt und du keinen Geheimcode hast (siehe unten).`],
+[`Wie setze ich meinen Fortschritt selbst zurück?`,`<ol><li>Gehe zum Startbildschirm und tippe unten rechts auf <b>Reset progress</b>.</li><li>Die Schaltfläche ändert sich zu „Tap again to erase everything“. Tippe innerhalb von 4 Sekunden nochmals darauf. Wartest du länger, passiert nichts.</li></ol>Das löscht Punkte, XP und Rang, Bestwerte, die Tagesserie und den Fortschritt aller Wörter (Artikel und Plural). Ist dieses Gerät mit einem Geheimcode verbunden, wird auch die Cloud-Kopie zurückgesetzt, und deine anderen Geräte folgen. Es lässt sich nicht rückgängig machen. Das Löschen der Website-Daten im Browser hat die gleiche Wirkung.`],
+[`Kann ich auf einem anderen Gerät weiterspielen? (Geheimcode)`,`Ja. Tippe auf dem Startbildschirm auf <b>☁️ Secret code</b> und wähle <b>Create my secret code</b>. Du erhältst einen Code aus 12 Buchstaben und Ziffern, zum Beispiel <i>K7QF-2M9X-PD4T</i>. Es gibt kein Konto, keine E-Mail und kein Passwort. Schreibe den Code auf. Auf einem anderen Gerät tippst du auf ☁️ Secret code, gibst ihn ein, und dein Fortschritt erscheint dort. Danach wird der Fortschritt automatisch im Hintergrund synchronisiert.<ul><li>Haben beide Geräte schon Fortschritt, kannst du sie <b>zusammenführen</b>: Jedes Wort behält seinen besten Status und du behältst die höheren Bestwerte.</li><li><b>Halte den Code geheim.</b> Wer ihn eingibt, kann als du spielen und deinen Fortschritt verändern.</li><li><b>Verlierst du den Code, kann ihn niemand wiederherstellen</b>, weil das Spiel nicht weiss, wer du bist. Auf den bereits verbundenen Geräten bleibt dein Fortschritt erhalten, und du kannst dort einen neuen Code erstellen.</li><li>Hochgeladen wird nur dein Fortschritt (Wortstatus, XP, Bestwerte, Tagesserie). Der Code selbst wird auf dem Server nur in verschlüsselter Form (Hash) gespeichert.</li><li>Du kannst ein Gerät jederzeit trennen oder die Cloud-Kopie löschen, auf demselben Bildschirm.</li></ul>`],
+[`Wie vermeide ich, dass mein Fortschritt versehentlich verloren geht?`,`Ohne Geheimcode wird der Fortschritt nur auf deinem eigenen Gerät im Browser gespeichert. Mit Geheimcode liegt er zusätzlich in der Cloud, ein verlorenes Gerät oder gelöschte Browserdaten bedeuten dann keinen verlorenen Fortschritt mehr. So bleibt er sicher:<ul><li>Erstelle einen <b>Geheimcode</b> und schreibe ihn auf. Das ist der beste Schutz.</li><li>Benutze immer <b>dasselbe Gerät, denselben Browser (oder dieselbe Home-Bildschirm-App) und dieselbe Webadresse</b>.</li><li>Auf iPhone und iPad haben die <b>Home-Bildschirm-App und Safari getrennte Fortschritte</b>. Entscheide dich für eine Variante. Am sichersten ist es, die App zum Home-Bildschirm hinzuzufügen und immer über das Symbol zu öffnen.</li><li>Lösche keine Website-Daten: In Safari löscht „Verlauf und Websitedaten löschen“ deinen Fortschritt. In Chrome hat „Cookies und Websitedaten“ dieselbe Wirkung.</li><li>Benutze keinen privaten Modus. Der Fortschritt geht verloren, sobald du den Tab schliesst.</li><li>Lösche das Symbol auf dem Home-Bildschirm nicht. Mit der App werden auch ihre gespeicherten Daten entfernt.</li><li>Ändert sich die Webadresse (neue Domain oder neuer Repository-Name), wandert der Fortschritt nicht mit.</li><li>Safari kann die Daten von Websites löschen, die du etwa 7 Tage nicht geöffnet hast. Apps auf dem Home-Bildschirm sind davon nicht betroffen.</li><li>Ohne Geheimcode werden Handy, Tablet und Computer nicht synchronisiert. Jedes Gerät hat seinen eigenen Fortschritt.</li></ul>`],
+[`Funktioniert das Spiel offline?`,`Ja. Öffne es einmal mit Internetverbindung. Danach funktioniert es auch offline, zum Beispiel im Flugmodus. Mit Geheimcode wird dein Fortschritt synchronisiert, sobald du wieder online bist.`],
 [`Wie aktualisiere ich die App?`,`Öffne sie zweimal. Beim ersten Mal wird die neue Version im Hintergrund geladen, beim zweiten Mal siehst du sie. Die Versionsnummer steht unten auf dem Startbildschirm.`],
 [`Warum haben manche Wörter keinen Plural?`,`Manche Nomen werden nur im Singular verwendet, zum Beispiel <i>Unterricht</i>, <i>Obst</i> oder <i>Liebe</i>. Sie kommen in den Artikel-Spielen vor, aber nicht im Plural-Training, das 472 der 500 Wörter nutzt.`],
 [`Wie zuverlässig sind die Tipps?`,`Die Tipps sind Faustregeln, keine Gesetze. Ein Tipp erscheint nur, wenn er zum richtigen Artikel passt, aber im Deutschen gibt es Ausnahmen (zum Beispiel <i>der Moment</i> oder <i>das Auge</i>).`],
 [`Warum „Strasse“ und nicht „Straße“?`,`Die Wortliste verwendet die Schweizer Schreibweise mit ss statt ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Versionsverlauf`,`<ul><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
+[`Versionsverlauf`,`<ul><li><b>1.3.0</b>: Geheimcode zum Weiterspielen auf anderen Geräten, mit automatischer Synchronisierung.</li><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
 ]
 };
 function renderFaq(){
@@ -1288,6 +1483,7 @@ function go(screen){
   if(screen==='home') renderHome();
   if(screen==='themes') renderThemes();
   if(screen==='faq') renderFaq();
+  if(screen==='cloud') renderCloud();
   show(screen);
 }
 
@@ -1302,6 +1498,8 @@ $('themesBack').onclick=()=>go('home');
 $('cheatBtn').onclick=()=>go('cheat');
 $('cheatBack').onclick=()=>go('home');
 $('faqBtn').onclick=()=>go('faq');
+$('cloudBtn').onclick=()=>go('cloud');
+$('cloudBack').onclick=()=>go('home');
 $('faqBack').onclick=()=>go('home');
 document.querySelectorAll('.lang').forEach(b=>b.onclick=()=>{S.lang=b.dataset.l; save(); renderFaq();});
 $('quitBtn').onclick=quit;
@@ -1314,7 +1512,7 @@ $('arts').querySelectorAll('.art').forEach(b=>b.onclick=()=>answer(b.dataset.a))
 let rt=0;
 $('resetBtn').onclick=()=>{
   const b=$('resetBtn');
-  if(b.dataset.arm){S=defaults(); save(); b.dataset.arm=''; b.textContent='Reset progress'; clearTimeout(rt); renderHome(); return;}
+  if(b.dataset.arm){const cl=S.cloud; S=defaults(); S.cloud=cl; S.rv=Date.now(); save(); if(cloudOn()){clearTimeout(syncTimer); sync();} b.dataset.arm=''; b.textContent='Reset progress'; clearTimeout(rt); renderHome(); return;}
   b.dataset.arm='1'; b.textContent='Tap again to erase everything';
   rt=setTimeout(()=>{b.dataset.arm=''; b.textContent='Reset progress';},4000);
 };
@@ -1333,7 +1531,8 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 renderHome();
-window.__artikel={WORDS,THEMES,get G(){return G;},start,answer,proceed,applyResult,statusOf,VERSION,S:()=>S}; // handy for debugging
+if(cloudOn()) sync();
+window.__artikel={WORDS,THEMES,get G(){return G;},start,answer,proceed,applyResult,statusOf,VERSION,S:()=>S,mergeStates,normCode,genCode,fmtCode,CLOUD}; // handy for debugging
 })();
 </script>
 <script>
