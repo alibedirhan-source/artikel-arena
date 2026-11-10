@@ -59,7 +59,7 @@ h1 span{color:var(--gold)}
 .mode.plur{background:linear-gradient(135deg,#8b5cf6,#6366f1)}
 .mode.fix{background:linear-gradient(135deg,#10b981,#14b8a6)}
 .mode[disabled]{filter:grayscale(.8) brightness(.7);cursor:default}
-.links{display:flex;justify-content:space-between;margin-top:14px;gap:8px}
+.links{display:flex;justify-content:space-between;flex-wrap:wrap;margin-top:14px;gap:4px 8px}
 .link{background:none;border:0;color:var(--muted);font-size:14.5px;font-weight:500;cursor:pointer;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
 .back{align-self:flex-start;margin-bottom:6px}
 h2{margin:6px 0 10px;font-size:26px}
@@ -165,6 +165,16 @@ h2{margin:6px 0 10px;font-size:26px}
 .pls.locked .plb.dim{opacity:.35}
 .pls.locked .plb.good{border-color:var(--gold);box-shadow:0 0 0 4px rgba(251,191,36,.9)}
 #game.waiting .pls{display:none}
+#faq h2{margin-top:2px}
+.langs{display:flex;gap:8px;margin:0 0 10px}
+.lang{background:var(--card);border:2px solid var(--line);border-radius:99px;padding:6px 18px;font-weight:600;font-size:15px;cursor:pointer}
+.lang.on{background:var(--gold);border-color:var(--gold);color:#3b2a00}
+.faqlist details{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:10px 14px;margin-bottom:8px}
+.faqlist summary{font-weight:600;font-size:16.5px;cursor:pointer;line-height:1.3}
+.faqlist .ans{color:#d6d9f5;font-size:15px;line-height:1.5;margin-top:8px}
+.faqlist .ans ul,.faqlist .ans ol{margin:6px 0 0;padding-left:20px}
+.faqlist .ans li{margin-bottom:5px}
+.ver{text-align:center;color:var(--muted);font-size:12.5px;margin-top:10px}
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
 @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
 @keyframes slidein{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
@@ -203,8 +213,10 @@ h2{margin:6px 0 10px;font-size:26px}
     </div>
     <div class="links">
       <button class="link" id="cheatBtn">📒 Cheat sheet</button>
+      <button class="link" id="faqBtn">❓ FAQ / Hilfe</button>
       <button class="link" id="resetBtn">Reset progress</button>
     </div>
+    <div class="ver" id="ver"></div>
   </section>
 
   <!-- THEMES -->
@@ -242,6 +254,15 @@ h2{margin:6px 0 10px;font-size:26px}
       <div class="grp tip"><h3>🧩 Compound nouns</h3>The <b>last part</b> decides: das Zimmer → <i>das</i> Wohnzimmer, der Tisch → <i>der</i> Schreibtisch.
         <div class="note">These are tendencies, not laws — there are exceptions (der Moment, das Auge…). The tips in the game only appear when they match.</div></div>
     </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="screen">
+    <button class="link back" id="faqBack">← Back</button>
+    <h2 id="faqTitle">FAQ</h2>
+    <div class="langs"><button class="lang" data-l="en">English</button><button class="lang" data-l="de">Deutsch</button></div>
+    <div class="faqlist" id="faqList"></div>
+    <div class="ver" id="faqVer"></div>
   </section>
 
   <!-- GAME -->
@@ -302,6 +323,7 @@ h2{margin:6px 0 10px;font-size:26px}
 'use strict';
 /* ---------- DATA (from 500_haeufige_deutsche_Nomen.xlsx) ----------
    r = der, e = die, s = das ; format: "<r|e|s> Noun/Plural" (empty plural = none) */
+const VERSION='1.2.0', VDATE='10 Nov 2026';
 const ART={r:'der',e:'die',s:'das'};
 const RAW={
 'Familie und Menschen':['👨‍👩‍👧',`
@@ -887,7 +909,7 @@ WORDS.forEach(w=>{w.hint=makeHint(w);});
 
 /* ---------- STORAGE ---------- */
 const KEY='artikel-arena-v1';
-const defaults=()=>({stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{last:'',streak:0},games:0});
+const defaults=()=>({lang:'en',stats:{},pst:{},best:{blitz:0,surv:0},xp:0,sound:true,day:{last:'',streak:0},games:0});
 let S=defaults();
 try{const raw=localStorage.getItem(KEY); if(raw){const o=JSON.parse(raw); S=Object.assign(defaults(),o); S.best=Object.assign({blitz:0,surv:0},o.best); S.day=Object.assign({last:'',streak:0},o.day);}}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
@@ -1032,8 +1054,51 @@ function renderHome(){
   $('mFix').disabled=!n;
   const pp=WORDS.filter(w=>w.plural);$('pSub').textContent='Pick the right plural · '+pp.filter(w=>statusOf(w,S.pst)==='m').length+' / '+pp.length+' mastered';
   const d=S.day.streak||0; $('dayStreak').textContent='🔥 '+d+' day'+(d===1?'':'s');
+  $('ver').textContent='Artikel Arena v'+VERSION+' · '+VDATE;
   setMascot('heroMascot','happy'); syncSound();
 }
+
+const FAQ={
+en:[
+[`What is Artikel Arena?`,`A game for practising the German articles <b>der, die, das</b> with the 500 most common nouns, including their plurals. Every word shows its English meaning in small print, and after each answer you get a short tip when a rule applies.`],
+[`What do the game modes do?`,`<ul><li>⚡ <b>Blitz</b>: 60 seconds. A wrong answer costs 5 seconds.</li><li>❤️ <b>Survival</b>: 3 lives. The time per word shrinks from 6 to 2.5 seconds.</li><li>🎯 <b>Topic training</b>: rounds of 10 words from one topic. Words you miss come back a few cards later.</li><li>🔢 <b>Plural practice</b>: choose the correct plural out of three options.</li><li>🔁 <b>Fix my mistakes</b>: practises the words you got wrong and have not mastered yet.</li></ul>`],
+[`How do points, combos and ranks work?`,`A correct answer gives 100 points plus up to 50 for speed. This is multiplied by your combo: ×2 from 5 correct answers in a row, up to ×5. Points count as XP and raise your rank (from Artikel-Neuling to Artikel-Legende). The daily streak counts the days on which you finished at least one game.`],
+[`When does a word count as “mastered”?`,`Every word goes through three stages:<ul><li><b>Learning</b>: fewer than 3 correct answers in a row.</li><li><b>Almost mastered 🌓</b>: 3 correct answers in a row.</li><li><b>Mastered ⭐</b>: answered correctly again on a different day. If the 3rd correct answer already falls on a different day than the 2nd, the word becomes mastered right away.</li></ul>Only the first attempt of a word counts. Repeats inside Topic training only help you remember. Articles and plurals have separate progress.`],
+[`When is progress reset?`,`The game never resets your overall progress by itself. This is what can happen to a single word:<ul><li><b>Learning</b>: a wrong answer sets the streak back to 0 / 3.</li><li><b>Almost mastered</b>: a wrong answer does not change the stage. It never goes back to the start.</li><li><b>Mastered</b>: a wrong answer drops it to almost mastered. One correct answer (the same day is fine) makes it mastered again.</li></ul>Your whole progress is deleted only if you tap “Reset progress” yourself or your browser removes the saved data (see below).`],
+[`How do I reset my progress myself?`,`<ol><li>Go to the home screen and tap <b>Reset progress</b> (bottom right).</li><li>The button changes to “Tap again to erase everything”. Tap it again within 4 seconds. If you wait longer, nothing happens.</li></ol>This erases points, XP and rank, best scores, the daily streak and the progress of all words (articles and plurals). It cannot be undone. Deleting the website data in your browser has the same effect.`],
+[`How do I avoid losing my progress by accident?`,`Progress is saved only on your own device, in the browser. It is not uploaded anywhere, so it can only disappear locally. To keep it:<ul><li>Always use the <b>same device, the same browser (or Home Screen app) and the same web address</b>.</li><li>On iPhone and iPad, the <b>Home Screen app and Safari keep separate progress</b>. Pick one and stick to it. Adding the app to the Home Screen and always opening it from the icon is the safest choice.</li><li>Do not clear website data: in Safari, “Clear History and Website Data” deletes your progress. Chrome’s “Cookies and site data” does the same.</li><li>Do not use private browsing. Progress is lost when you close the tab.</li><li>Do not delete the Home Screen icon. Removing the app also removes its saved data.</li><li>If the web address changes (new domain or new repository name), progress does not move with it.</li><li>Safari may delete the data of websites you have not opened for about 7 days. Apps added to the Home Screen are not affected.</li><li>Phone, tablet and computer do not sync. Each device has its own progress.</li></ul>`],
+[`Does the game work offline?`,`Yes. Open it once with an internet connection. After that it also works offline, for example in airplane mode.`],
+[`How do I update the app?`,`Open it twice. The first time it loads the new version in the background, the second time you see it. The version number is shown at the bottom of the home screen.`],
+[`Why do some words have no plural?`,`Some nouns are only used in the singular, such as <i>Unterricht</i>, <i>Obst</i> or <i>Liebe</i>. They appear in the article games but not in Plural practice, which uses 472 of the 500 words.`],
+[`How reliable are the tips?`,`The tips are rules of thumb, not laws. A tip is only shown when it matches the correct article, but there are exceptions in German (for example <i>der Moment</i> or <i>das Auge</i>).`],
+[`Why “Strasse” and not “Straße”?`,`The word list uses Swiss spelling, with ss instead of ß (<i>Strasse</i>, <i>Grösse</i>).`],
+[`Version history`,`<ul><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
+],
+de:[
+[`Was ist Artikel Arena?`,`Ein Spiel, mit dem du die deutschen Artikel <b>der, die, das</b> an den 500 häufigsten Nomen übst, inklusive Plural. Unter jedem Wort steht klein die englische Bedeutung. Nach jeder Antwort gibt es einen kurzen Tipp, wenn eine Regel passt.`],
+[`Was machen die Spielmodi?`,`<ul><li>⚡ <b>Blitz</b>: 60 Sekunden. Eine falsche Antwort kostet 5 Sekunden.</li><li>❤️ <b>Survival</b>: 3 Leben. Die Zeit pro Wort sinkt von 6 auf 2,5 Sekunden.</li><li>🎯 <b>Themen-Training</b>: Runden mit 10 Wörtern aus einem Thema. Falsche Wörter kommen nach ein paar Karten wieder.</li><li>🔢 <b>Plural-Training</b>: Wähle den richtigen Plural aus drei Möglichkeiten.</li><li>🔁 <b>Fehler korrigieren</b>: übt die Wörter, die du falsch hattest und noch nicht gemeistert hast.</li></ul>`],
+[`Wie funktionieren Punkte, Combos und Ränge?`,`Eine richtige Antwort gibt 100 Punkte plus bis zu 50 für Tempo. Das wird mit deiner Combo multipliziert: ×2 ab 5 richtigen Antworten in Folge, bis zu ×5. Punkte zählen als XP und erhöhen deinen Rang (von Artikel-Neuling bis Artikel-Legende). Die Tagesserie zählt die Tage, an denen du mindestens ein Spiel beendet hast.`],
+[`Wann gilt ein Wort als „gemeistert“?`,`Jedes Wort durchläuft drei Stufen:<ul><li><b>Lernen</b>: weniger als 3 richtige Antworten in Folge.</li><li><b>Fast gemeistert 🌓</b>: 3 richtige Antworten in Folge.</li><li><b>Gemeistert ⭐</b>: an einem anderen Tag nochmals richtig beantwortet. Fällt die 3. richtige Antwort schon auf einen anderen Tag als die 2., ist das Wort sofort gemeistert.</li></ul>Nur der erste Versuch eines Wortes zählt. Wiederholungen im Themen-Training helfen nur beim Merken. Artikel und Plural haben getrennte Fortschritte.`],
+[`Wann wird der Fortschritt zurückgesetzt?`,`Das Spiel setzt deinen Gesamtfortschritt nie von selbst zurück. Bei einem einzelnen Wort kann Folgendes passieren:<ul><li><b>Lernen</b>: eine falsche Antwort setzt die Serie auf 0 / 3 zurück.</li><li><b>Fast gemeistert</b>: eine falsche Antwort ändert die Stufe nicht. Es fällt nie an den Anfang zurück.</li><li><b>Gemeistert</b>: eine falsche Antwort stuft es auf „fast gemeistert“ zurück. Eine richtige Antwort (auch am selben Tag) macht es wieder gemeistert.</li></ul>Dein gesamter Fortschritt wird nur gelöscht, wenn du selbst „Reset progress“ antippst oder dein Browser die gespeicherten Daten entfernt (siehe unten).`],
+[`Wie setze ich meinen Fortschritt selbst zurück?`,`<ol><li>Gehe zum Startbildschirm und tippe unten rechts auf <b>Reset progress</b>.</li><li>Die Schaltfläche ändert sich zu „Tap again to erase everything“. Tippe innerhalb von 4 Sekunden nochmals darauf. Wartest du länger, passiert nichts.</li></ol>Das löscht Punkte, XP und Rang, Bestwerte, die Tagesserie und den Fortschritt aller Wörter (Artikel und Plural). Es lässt sich nicht rückgängig machen. Das Löschen der Website-Daten im Browser hat die gleiche Wirkung.`],
+[`Wie vermeide ich, dass mein Fortschritt versehentlich verloren geht?`,`Der Fortschritt wird nur auf deinem eigenen Gerät im Browser gespeichert. Er wird nirgends hochgeladen und kann deshalb nur lokal verschwinden. So bleibt er erhalten:<ul><li>Benutze immer <b>dasselbe Gerät, denselben Browser (oder dieselbe Home-Bildschirm-App) und dieselbe Webadresse</b>.</li><li>Auf iPhone und iPad haben die <b>Home-Bildschirm-App und Safari getrennte Fortschritte</b>. Entscheide dich für eine Variante. Am sichersten ist es, die App zum Home-Bildschirm hinzuzufügen und immer über das Symbol zu öffnen.</li><li>Lösche keine Website-Daten: In Safari löscht „Verlauf und Websitedaten löschen“ deinen Fortschritt. In Chrome hat „Cookies und Websitedaten“ dieselbe Wirkung.</li><li>Benutze keinen privaten Modus. Der Fortschritt geht verloren, sobald du den Tab schliesst.</li><li>Lösche das Symbol auf dem Home-Bildschirm nicht. Mit der App werden auch ihre gespeicherten Daten entfernt.</li><li>Ändert sich die Webadresse (neue Domain oder neuer Repository-Name), wandert der Fortschritt nicht mit.</li><li>Safari kann die Daten von Websites löschen, die du etwa 7 Tage nicht geöffnet hast. Apps auf dem Home-Bildschirm sind davon nicht betroffen.</li><li>Handy, Tablet und Computer werden nicht synchronisiert. Jedes Gerät hat seinen eigenen Fortschritt.</li></ul>`],
+[`Funktioniert das Spiel offline?`,`Ja. Öffne es einmal mit Internetverbindung. Danach funktioniert es auch offline, zum Beispiel im Flugmodus.`],
+[`Wie aktualisiere ich die App?`,`Öffne sie zweimal. Beim ersten Mal wird die neue Version im Hintergrund geladen, beim zweiten Mal siehst du sie. Die Versionsnummer steht unten auf dem Startbildschirm.`],
+[`Warum haben manche Wörter keinen Plural?`,`Manche Nomen werden nur im Singular verwendet, zum Beispiel <i>Unterricht</i>, <i>Obst</i> oder <i>Liebe</i>. Sie kommen in den Artikel-Spielen vor, aber nicht im Plural-Training, das 472 der 500 Wörter nutzt.`],
+[`Wie zuverlässig sind die Tipps?`,`Die Tipps sind Faustregeln, keine Gesetze. Ein Tipp erscheint nur, wenn er zum richtigen Artikel passt, aber im Deutschen gibt es Ausnahmen (zum Beispiel <i>der Moment</i> oder <i>das Auge</i>).`],
+[`Warum „Strasse“ und nicht „Straße“?`,`Die Wortliste verwendet die Schweizer Schreibweise mit ss statt ß (<i>Strasse</i>, <i>Grösse</i>).`],
+[`Versionsverlauf`,`<ul><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
+]
+};
+function renderFaq(){
+  const L=S.lang==='de'?'de':'en', F=FAQ[L];
+  $('faqTitle').textContent=L==='de'?'Häufige Fragen':'FAQ';
+  $('faqBack').textContent=L==='de'?'← Zurück':'← Back';
+  document.querySelectorAll('.lang').forEach(b=>b.classList.toggle('on',b.dataset.l===L));
+  $('faqList').innerHTML=F.map((x,i)=>'<details'+(i===0?' open':'')+'><summary>'+x[0]+'</summary><div class="ans">'+x[1]+'</div></details>').join('');
+  $('faqVer').textContent='Artikel Arena v'+VERSION+' · '+VDATE;
+}
+
 let themeKind='art';
 function renderThemes(){
   const isP=themeKind==='plural', st=isP?S.pst:S.stats, base=isP?WORDS.filter(w=>w.plural):WORDS;
@@ -1221,6 +1286,7 @@ function quit(){
 function go(screen){
   if(screen==='home') renderHome();
   if(screen==='themes') renderThemes();
+  if(screen==='faq') renderFaq();
   show(screen);
 }
 
@@ -1234,6 +1300,9 @@ $('mFix').onclick=()=>{const p=mistakesPool(); if(p.length) start('train',{pool:
 $('themesBack').onclick=()=>go('home');
 $('cheatBtn').onclick=()=>go('cheat');
 $('cheatBack').onclick=()=>go('home');
+$('faqBtn').onclick=()=>go('faq');
+$('faqBack').onclick=()=>go('home');
+document.querySelectorAll('.lang').forEach(b=>b.onclick=()=>{S.lang=b.dataset.l; save(); renderFaq();});
 $('quitBtn').onclick=quit;
 $('homeBtn').onclick=()=>go('home');
 $('againBtn').onclick=()=>start(G.mode,G.opts);
@@ -1263,7 +1332,7 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 renderHome();
-window.__artikel={WORDS,THEMES,get G(){return G;},start,answer,proceed,applyResult,statusOf,S:()=>S}; // handy for debugging
+window.__artikel={WORDS,THEMES,get G(){return G;},start,answer,proceed,applyResult,statusOf,VERSION,S:()=>S}; // handy for debugging
 })();
 </script>
 <script>
