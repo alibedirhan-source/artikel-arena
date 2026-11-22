@@ -196,6 +196,20 @@ h2{margin:6px 0 10px;font-size:26px}
 .cin{width:100%;padding:13px 14px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--text);font:inherit;font-size:20px;letter-spacing:2px;text-transform:uppercase;text-align:center}
 .cmsg{min-height:20px;font-size:14px;margin:4px 0;text-align:center}
 .cmsg.err{color:#fda4af}.cmsg.ok{color:#86efac}
+.seg{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+.seg button{background:var(--card);border:2px solid var(--line);border-radius:99px;padding:6px 14px;font-weight:600;font-size:14px;cursor:pointer;color:var(--text)}
+.seg button.on{background:var(--gold);border-color:var(--gold);color:#3b2a00}
+.wsum{display:flex;gap:8px;margin-bottom:12px}
+.wsum div{flex:1;background:var(--card);border:2px solid var(--line);border-radius:16px;padding:8px 4px;text-align:center;font-size:12.5px;color:var(--muted)}
+.wsum b{display:block;font-size:22px;color:var(--text)}
+.wrow{display:flex;align-items:center;gap:10px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:9px 12px;margin-bottom:7px;font-size:17px}
+.wrow .a{font-weight:700;min-width:38px}
+.wrow .a.der{color:var(--der)}.wrow .a.die{color:var(--die)}.wrow .a.das{color:var(--das)}
+.wrow .wt{flex:1;display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.wrow .wt small{color:var(--muted);font-size:13px}
+.wrow .bd{font-size:12.5px;font-weight:600;border-radius:99px;padding:3px 10px;white-space:nowrap;background:#12163a;color:var(--muted)}
+.wrow.m{border-color:rgba(251,191,36,.6)}.wrow.m .bd{background:var(--gold);color:#3b2a00}
+.wrow.a .bd{background:rgba(251,191,36,.18);color:#fde9a8}
 
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
 @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
@@ -238,6 +252,7 @@ h2{margin:6px 0 10px;font-size:26px}
     <div class="links">
       <button class="link" id="cheatBtn">📒 Cheat sheet</button>
       <button class="link" id="cloudBtn" hidden>☁️ Secret code</button>
+      <button class="link" id="wordsBtn" hidden>📊 My words</button>
       <button class="link" id="faqBtn">❓ FAQ / Hilfe</button>
       <button class="link" id="resetBtn">Reset progress</button>
     </div>
@@ -298,6 +313,22 @@ h2{margin:6px 0 10px;font-size:26px}
     <div id="cloudBody"></div>
   </section>
 
+  <!-- MY WORDS (needs secret code) -->
+  <section id="wprog" class="screen">
+    <button class="link back" id="wprogBack">← Back</button>
+    <h2>📊 My words</h2>
+    <div class="seg" id="wKind"><button data-k="art" class="on">Articles</button><button data-k="plural">Plurals</button></div>
+    <div class="wsum" id="wSum"></div>
+    <div class="themes" id="wCats"></div>
+  </section>
+  <section id="wlist" class="screen">
+    <button class="link back" id="wlistBack">← Back</button>
+    <h2 id="wlistTitle"></h2>
+    <div class="wsum" id="wlSum"></div>
+    <div class="seg" id="wFilter"><button data-f="all" class="on">All</button><button data-f="m">⭐ Mastered</button><button data-f="a">🌓 Almost</button><button data-f="l">Learning</button></div>
+    <div id="wWords"></div>
+  </section>
+
   <!-- GAME -->
   <section id="game" class="screen">
     <div class="hud">
@@ -356,7 +387,7 @@ h2{margin:6px 0 10px;font-size:26px}
 'use strict';
 /* ---------- DATA (from 500_haeufige_deutsche_Nomen.xlsx) ----------
    r = der, e = die, s = das ; format: "<r|e|s> Noun/Plural" (empty plural = none) */
-const VERSION='1.4.2', VDATE='10 Nov 2026';
+const VERSION='1.5.0', VDATE='22 Nov 2026';
 const ART={r:'der',e:'die',s:'das'};
 const RAW={
 'Familie und Menschen':['👨‍👩‍👧',`
@@ -1090,7 +1121,7 @@ function renderHome(){
   const pp=WORDS.filter(w=>w.plural);$('pSub').textContent='Pick the right plural · '+pp.filter(w=>statusOf(w,S.pst)==='m').length+' / '+pp.length+' mastered';
   const d=S.day.streak||0; $('dayStreak').textContent='🔥 '+d+' day'+(d===1?'':'s');
   $('ver').textContent='Artikel Arena v'+VERSION+' · '+VDATE;
-  $('cloudBtn').hidden=!cloudAvail(); $('cloudBtn').textContent=cloudOn()?'☁️ Secret code ✓':'☁️ Secret code'; paintCloud();
+  $('wordsBtn').hidden=!cloudOn(); $('cloudBtn').hidden=!cloudAvail(); $('cloudBtn').textContent=cloudOn()?'☁️ Secret code ✓':'☁️ Secret code'; paintCloud();
   setMascot('heroMascot','happy'); syncSound();
 }
 
@@ -1298,7 +1329,7 @@ en:[
 [`Why do some words have no plural?`,`Some nouns are only used in the singular, such as <i>Unterricht</i>, <i>Obst</i> or <i>Liebe</i>. They appear in the article games but not in Plural practice, which uses 472 of the 500 words.`],
 [`How reliable are the tips?`,`The tips are rules of thumb, not laws. A tip is only shown when it matches the correct article, but there are exceptions in German (for example <i>der Moment</i> or <i>das Auge</i>).`],
 [`Why “Strasse” and not “Straße”?`,`The word list uses Swiss spelling, with ss instead of ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Version history`,`<ul><li><b>1.4.2</b>: fix: a nickname saved while another sync was running could fail to reach the cloud.</li><li><b>1.4.1</b>: your nickname is shown on the home screen.</li><li><b>1.4.0</b>: optional nickname, saved with your secret code.</li><li><b>1.3.1</b>: FAQ entry “How can I save my progress?” explains the secret code.</li><li><b>1.3.0</b>: 5-character secret code to continue on other devices, with automatic sync.</li><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
+[`Version history`,`<ul><li><b>1.5.0</b>: new “My words” page (needs a secret code): see your almost mastered and mastered words by topic, with the full word list.</li><li><b>1.4.2</b>: fix: a nickname saved while another sync was running could fail to reach the cloud.</li><li><b>1.4.1</b>: your nickname is shown on the home screen.</li><li><b>1.4.0</b>: optional nickname, saved with your secret code.</li><li><b>1.3.1</b>: FAQ entry “How can I save my progress?” explains the secret code.</li><li><b>1.3.0</b>: 5-character secret code to continue on other devices, with automatic sync.</li><li><b>1.2.1</b>: fixed Plural practice, where the first answer option could not be tapped on some screens.</li><li><b>1.2.0</b>: new mastery rules (learning, almost mastered, mastered), status feedback after each answer, FAQ and version number.</li><li><b>1.1.0</b>: English meanings and Plural practice.</li><li><b>1.0.0</b>: first release with Blitz, Survival, Topic training and Fix my mistakes.</li></ul>`]
 ],
 de:[
 [`Was ist Artikel Arena?`,`Ein Spiel, mit dem du die deutschen Artikel <b>der, die, das</b> an den 500 häufigsten Nomen übst, inklusive Plural. Unter jedem Wort steht klein die englische Bedeutung. Nach jeder Antwort gibt es einen kurzen Tipp, wenn eine Regel passt.`],
@@ -1314,7 +1345,7 @@ de:[
 [`Warum haben manche Wörter keinen Plural?`,`Manche Nomen werden nur im Singular verwendet, zum Beispiel <i>Unterricht</i>, <i>Obst</i> oder <i>Liebe</i>. Sie kommen in den Artikel-Spielen vor, aber nicht im Plural-Training, das 472 der 500 Wörter nutzt.`],
 [`Wie zuverlässig sind die Tipps?`,`Die Tipps sind Faustregeln, keine Gesetze. Ein Tipp erscheint nur, wenn er zum richtigen Artikel passt, aber im Deutschen gibt es Ausnahmen (zum Beispiel <i>der Moment</i> oder <i>das Auge</i>).`],
 [`Warum „Strasse“ und nicht „Straße“?`,`Die Wortliste verwendet die Schweizer Schreibweise mit ss statt ß (<i>Strasse</i>, <i>Grösse</i>).`],
-[`Versionsverlauf`,`<ul><li><b>1.4.2</b>: Korrektur: Ein Spitzname, der während einer laufenden Synchronisierung gespeichert wurde, konnte die Cloud verfehlen.</li><li><b>1.4.1</b>: dein Spitzname wird auf dem Startbildschirm angezeigt.</li><li><b>1.4.0</b>: freiwilliger Spitzname, gespeichert mit deinem Geheimcode.</li><li><b>1.3.1</b>: FAQ-Eintrag „Wie kann ich meinen Fortschritt speichern?“ erklärt den Geheimcode.</li><li><b>1.3.0</b>: Geheimcode aus 5 Zeichen zum Weiterspielen auf anderen Geräten, mit automatischer Synchronisierung.</li><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
+[`Versionsverlauf`,`<ul><li><b>1.5.0</b>: neue Seite „My words“ (mit Geheimcode): deine fast gemeisterten und gemeisterten Wörter nach Thema, mit der vollständigen Wortliste.</li><li><b>1.4.2</b>: Korrektur: Ein Spitzname, der während einer laufenden Synchronisierung gespeichert wurde, konnte die Cloud verfehlen.</li><li><b>1.4.1</b>: dein Spitzname wird auf dem Startbildschirm angezeigt.</li><li><b>1.4.0</b>: freiwilliger Spitzname, gespeichert mit deinem Geheimcode.</li><li><b>1.3.1</b>: FAQ-Eintrag „Wie kann ich meinen Fortschritt speichern?“ erklärt den Geheimcode.</li><li><b>1.3.0</b>: Geheimcode aus 5 Zeichen zum Weiterspielen auf anderen Geräten, mit automatischer Synchronisierung.</li><li><b>1.2.1</b>: Plural-Training korrigiert: Die erste Antwortmöglichkeit liess sich auf manchen Bildschirmen nicht antippen.</li><li><b>1.2.0</b>: neue Regeln zum Meistern (Lernen, fast gemeistert, gemeistert), Statusanzeige nach jeder Antwort, FAQ und Versionsnummer.</li><li><b>1.1.0</b>: englische Bedeutungen und Plural-Training.</li><li><b>1.0.0</b>: erste Version mit Blitz, Survival, Themen-Training und Fehler korrigieren.</li></ul>`]
 ]
 };
 function renderFaq(){
@@ -1340,6 +1371,39 @@ function renderThemes(){
   };
   mk('🎲','All topics mixed',base);
   THEMES.forEach(t=>mk(RAW[t][0],t,base.filter(w=>w.theme===t)));
+}
+
+/* ---------- MY WORDS (progress by category; needs a secret code) ---------- */
+let wKind='art', wCat=null, wFilter='all';
+const wStore=()=>wKind==='plural'?S.pst:S.stats;
+const wBase=()=>wKind==='plural'?WORDS.filter(w=>w.plural):WORDS;
+const cnt=(pool,st)=>({m:pool.filter(w=>statusOf(w,st)==='m').length,a:pool.filter(w=>statusOf(w,st)==='a').length,n:pool.length});
+const sumHtml=c=>'<div><b>'+c.m+'</b>⭐ Mastered</div><div><b>'+c.a+'</b>🌓 Almost</div><div><b>'+(c.n-c.m-c.a)+'</b>Learning</div>';
+function renderWprog(){
+  const st=wStore(), base=wBase();
+  document.querySelectorAll('#wKind button').forEach(b=>b.classList.toggle('on',b.dataset.k===wKind));
+  $('wSum').innerHTML=sumHtml(cnt(base,st));
+  const box=$('wCats'); box.innerHTML='';
+  THEMES.forEach(t=>{
+    const pool=base.filter(w=>w.theme===t), c=cnt(pool,st);
+    const b=document.createElement('button'); b.className='th';
+    b.innerHTML='<span class="e">'+RAW[t][0]+'</span><span class="tt"><span>'+t+'</span><span class="meter"><i class="al" style="width:'+((c.m+c.a)/c.n*100)+'%"></i><i style="width:'+(c.m/c.n*100)+'%"></i></span><small>⭐ '+c.m+' mastered · 🌓 '+c.a+' almost · '+c.n+' words</small></span>';
+    b.onclick=()=>{wCat=t; wFilter='all'; go('wlist');};
+    box.appendChild(b);
+  });
+}
+function renderWlist(){
+  const st=wStore(), pool=wBase().filter(w=>w.theme===wCat);
+  $('wlistTitle').textContent=RAW[wCat][0]+' '+wCat+(wKind==='plural'?' · Plurals':'');
+  $('wlSum').innerHTML=sumHtml(cnt(pool,st));
+  document.querySelectorAll('#wFilter button').forEach(b=>b.classList.toggle('on',b.dataset.f===wFilter));
+  const ord={m:0,a:1,l:2};
+  const list=pool.filter(w=>wFilter==='all'||statusOf(w,st)===wFilter).sort((x,y)=>ord[statusOf(x,st)]-ord[statusOf(y,st)]||x.noun.localeCompare(y.noun,'de'));
+  $('wWords').innerHTML=list.length?list.map(w=>{
+    const k=statusOf(w,st), e=st[w.id], badge=k==='m'?'⭐ Mastered':k==='a'?'🌓 Almost':(e&&e.s?e.s+' / 3':'Not yet');
+    const main=wKind==='plural'?'die '+w.plural:w.noun;
+    return '<div class="wrow '+k+'"><span class="a '+w.art+'">'+w.art+'</span><span class="wt"><b>'+(wKind==='plural'?w.noun+' → '+main:w.noun)+'</b><small>'+w.en+'</small></span><span class="bd">'+badge+'</span></div>';
+  }).join(''):'<div class="cen" style="text-align:center;color:var(--muted)">No words here yet.</div>';
 }
 
 /* ---------- GAME ---------- */
@@ -1515,6 +1579,8 @@ function go(screen){
   if(screen==='themes') renderThemes();
   if(screen==='faq') renderFaq();
   if(screen==='cloud') renderCloud();
+  if(screen==='wprog') renderWprog();
+  if(screen==='wlist') renderWlist();
   show(screen);
 }
 
@@ -1530,6 +1596,11 @@ $('cheatBtn').onclick=()=>go('cheat');
 $('cheatBack').onclick=()=>go('home');
 $('faqBtn').onclick=()=>go('faq');
 $('cloudBtn').onclick=()=>go('cloud');
+$('wordsBtn').onclick=()=>go('wprog');
+$('wprogBack').onclick=()=>go('home');
+$('wlistBack').onclick=()=>go('wprog');
+document.querySelectorAll('#wKind button').forEach(b=>b.onclick=()=>{wKind=b.dataset.k; renderWprog();});
+document.querySelectorAll('#wFilter button').forEach(b=>b.onclick=()=>{wFilter=b.dataset.f; renderWlist();});
 $('nickBtn').onclick=()=>go('cloud');
 $('cloudBack').onclick=()=>go('home');
 $('faqBack').onclick=()=>go('home');
